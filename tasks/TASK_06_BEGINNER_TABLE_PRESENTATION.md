@@ -22,6 +22,7 @@ spelregels of campagneflow te veranderen.
 - Studentenhuis potje 1 kan als leerstand met open kaarten worden gespeeld.
 - Open kaarten zijn afzonderlijk uit te zetten in Instellingen.
 - Animaties zijn instelbaar op rustig of snel.
+- Kaart, beslissing en KLOP hebben korte zelfgegenereerde retro-geluiden.
 - Acht nieuwe regressietests controleren advies, cast en de open-kaartenoptie.
 - GitHub Actions voert voortaan Godot 4.7.2-tests en een rooktest uit.
 
@@ -29,7 +30,7 @@ spelregels of campagneflow te veranderen.
 
 - De kaartadviseur is een uitlegfunctie, geen perfecte Toepen-AI.
 - De adviseur gebruikt alleen de eigen hand en openbare tafelgegevens.
-- Definitieve illustraties, muziek en geluidseffecten vallen buiten deze taak.
+- Definitieve illustraties en muziek vallen buiten deze taak.
 - De eerste visuele controle moet nog plaatsvinden in Godot op 390 x 844.
 
 ## Validatie
@@ -37,6 +38,6 @@ spelregels of campagneflow te veranderen.
 - Alle GDScript-bestanden zijn succesvol geparset met `gdparse`.
 - De vier nieuwe scripts/tests zijn lint-schoon.
 - GitHub Actions draait met Godot 4.7.2.
-- 507 geautomatiseerde tests slagen; er zijn 0 testfouten.
+- 509 geautomatiseerde tests slagen; er zijn 0 testfouten.
 - De headless rooktest van de hoofdscene slaagt.
 
