@@ -39,21 +39,17 @@ static func cost(id: String) -> int:
 		PowerUpId.HUISVOORDEEL:
 			return 7
 		PowerUpId.WASDAG:
-			return 0
+			return 6
 		PowerUpId.DUBBEL_KLOPPEN:
-			return 0
+			return 5
 		PowerUpId.STALEN_ZENUWEN:
-			return 0
+			return 6
 		_:
 			return 0
 
 
 static func is_implemented(id: String) -> bool:
-	return id == PowerUpId.KAARTJE_RUILEN \
-		or id == PowerUpId.EVEN_SPIEKEN \
-		or id == PowerUpId.OP_HET_RANDJE \
-		or id == PowerUpId.RONDJE_VAN_DE_ZAAK \
-		or id == PowerUpId.HUISVOORDEEL
+	return PowerUpId.all_ids().find(id) >= 0
 
 
 static func is_passive(id: String) -> bool:

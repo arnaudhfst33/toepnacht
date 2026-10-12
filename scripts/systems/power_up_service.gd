@@ -25,6 +25,17 @@ func can_activate(id: String, game: ToepenGame, run: CampaignState) -> bool:
 			return _between_trick_or_round(game) and game.players[ToepenGame.HUMAN_PLAYER_ID].penalty_points > 0
 		PowerUpId.HUISVOORDEEL:
 			return _swap_timing_ok(game) and game.deck != null and game.deck.remaining() >= 2
+		PowerUpId.WASDAG:
+			return game.state == ToepenGame.State.VUILE_WAS_CHALLENGE \
+				and game.vuile_was_caller_id == ToepenGame.HUMAN_PLAYER_ID \
+				and game.current_vuile_was_challenger_id() >= 0 \
+				and not run.wasdag_armed
+		PowerUpId.DUBBEL_KLOPPEN:
+			return game.can_knock(ToepenGame.HUMAN_PLAYER_ID) and not run.dubbel_armed
+		PowerUpId.STALEN_ZENUWEN:
+			return game.state == ToepenGame.State.KNOCK_DECISIONS \
+				and game.current_knock_responder_id() == ToepenGame.HUMAN_PLAYER_ID \
+				and game.knock_initiator_id != ToepenGame.HUMAN_PLAYER_ID
 		_:
 			return false
 
@@ -188,3 +199,45 @@ func adjust_penalty(game: ToepenGame, run: CampaignState, player_id: int, amount
 	player.is_active_in_round = true
 	run.consume_power_up(PowerUpId.OP_HET_RANDJE)
 	return 0
+
+
+func arm_wasdag(game: ToepenGame, run: CampaignState) -> bool:
+	if not can_activate(PowerUpId.WASDAG, game, run):
+		return false
+	run.wasdag_armed = true
+	game.skip_caller_was_bluff_penalty = true
+	return true
+
+
+func resolve_wasdag(game: ToepenGame, run: CampaignState) -> void:
+	if run == null or not run.wasdag_armed:
+		return
+	run.wasdag_armed = false
+	if game.last_vuile_was_bluff:
+		run.consume_power_up(PowerUpId.WASDAG)
+
+
+func arm_dubbel_kloppen(game: ToepenGame, run: CampaignState) -> bool:
+	if not can_activate(PowerUpId.DUBBEL_KLOPPEN, game, run):
+		return false
+	run.dubbel_armed = true
+	return true
+
+
+func consume_dubbel_on_knock(game: ToepenGame, run: CampaignState) -> void:
+	if run == null or not run.dubbel_armed:
+		return
+	run.dubbel_armed = false
+	if run.has_power_up(PowerUpId.DUBBEL_KLOPPEN):
+		run.consume_power_up(PowerUpId.DUBBEL_KLOPPEN)
+		game.human_dubbel_knock_this_round = true
+
+
+func use_stalen_zenuwen(game: ToepenGame, run: CampaignState) -> bool:
+	if not can_activate(PowerUpId.STALEN_ZENUWEN, game, run):
+		return false
+	if not run.consume_power_up(PowerUpId.STALEN_ZENUWEN):
+		return false
+	game.stalen_zenuwen_round = true
+	run.stalen_zenuwen_active = true
+	return true

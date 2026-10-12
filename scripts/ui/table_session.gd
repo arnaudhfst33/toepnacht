@@ -14,6 +14,8 @@ var seat_ai: Array = []
 var opponent_names: PackedStringArray = PackedStringArray(["AI 1", "AI 2", "AI 3"])
 var last_after_pot: int = CampaignFlow.AfterPot.NONE
 var power_mode: String = ""
+var pending_wasdag_choice: bool = false
+var pending_was_challenger_id: int = -1
 
 
 func _init() -> void:
@@ -53,7 +55,7 @@ func _configure_campaign_table() -> void:
 	opponent_names = PackedStringArray()
 	seat_ai = [null]
 	for seat in range(1, 4):
-		var profile := AiProfile.for_studentenhuis(potje, seat)
+		var profile := AiProfile.for_location(flow.campaign.location, potje, seat)
 		opponent_names.append(profile.display_name)
 		seat_ai.append(BaselineAI.new(profile))
 	var run := flow.campaign
@@ -75,12 +77,61 @@ func start_tutorial_kloppen() -> void:
 	resolve_ai()
 
 
+func start_tutorial_bluffen() -> void:
+	tutorial.setup_bluffen(game)
+	status_text = tutorial.intro
+	tip_text = tutorial.tip_for(game)
+	resolve_ai()
+
+
+func start_tutorial_was() -> void:
+	tutorial.setup_was(game, "true")
+	status_text = tutorial.intro
+	tip_text = tutorial.tip_for(game)
+	resolve_ai()
+
+
+func start_tutorial_toep() -> void:
+	tutorial.setup_toep(game, "toep")
+	status_text = tutorial.intro
+	tip_text = tutorial.tip_for(game)
+	resolve_ai()
+
+
+func start_tutorial_armoede() -> void:
+	tutorial.setup_armoede(game)
+	status_text = tutorial.intro
+	tip_text = tutorial.tip_for(game)
+	resolve_ai()
+
+
+func start_tutorial_winkel() -> void:
+	tutorial.setup_winkel_table(game)
+	var save := SaveGame.new()
+	save.memory_only = true
+	flow = CampaignFlow.new(save)
+	flow.start_new_studentenhuis_run()
+	flow.campaign.beer_caps = 20
+	power_service = PowerUpService.new()
+	flow.campaign.add_power_up(PowerUpId.EVEN_SPIEKEN)
+	flow.open_scripted_shop(tutorial.scripted_offerings)
+	status_text = tutorial.intro
+	tip_text = tutorial.tip_for(game)
+	resolve_ai()
+
+
 func next_round() -> void:
 	if game.state != ToepenGame.State.ROUND_END:
 		return
 	if flow != null:
 		flow.campaign.clear_peek()
 	power_mode = ""
+	pending_wasdag_choice = false
+	if tutorial.kind == TutorialDirector.Kind.BLUFFEN and tutorial.bluff_phase == 1:
+		tutorial.advance_bluffen(game)
+		status_text = tutorial.intro
+		resolve_ai()
+		return
 	game.start_round()
 	status_text = "Nieuwe ronde. Inzet %d." % game.round_stake
 	resolve_ai()
@@ -89,6 +140,9 @@ func next_round() -> void:
 func human_knock() -> bool:
 	if not game.request_knock(ToepenGame.HUMAN_PLAYER_ID):
 		return false
+	if flow != null and power_service != null:
+		power_service.consume_dubbel_on_knock(game, flow.campaign)
+		flow.persist()
 	status_text = "Jij klopt. Inzet is nu %d." % game.round_stake
 	resolve_ai()
 	return true
@@ -167,6 +221,9 @@ func human_skip_specials() -> bool:
 func human_challenge() -> bool:
 	if not game.challenge_vuile_was(ToepenGame.HUMAN_PLAYER_ID):
 		return false
+	if power_service != null and flow != null:
+		power_service.resolve_wasdag(game, flow.campaign)
+		flow.persist()
 	status_text = game.last_event
 	resolve_ai()
 	return true
@@ -181,6 +238,8 @@ func human_decline_challenge() -> bool:
 
 
 func waiting_for_human() -> bool:
+	if pending_wasdag_choice:
+		return true
 	if game.state == ToepenGame.State.GAME_END:
 		return false
 	if game.state == ToepenGame.State.ROUND_END:
@@ -216,6 +275,18 @@ func resolve_ai() -> void:
 			return
 		if game.players[actor].is_human:
 			return
+		if game.state == ToepenGame.State.VUILE_WAS_CHALLENGE \
+				and game.vuile_was_caller_id == ToepenGame.HUMAN_PLAYER_ID \
+				and flow != null and flow.campaign.has_power_up(PowerUpId.WASDAG) \
+				and not flow.campaign.wasdag_armed \
+				and not pending_wasdag_choice:
+			var view := PublicView.from_game(game, actor)
+			var action := _ai_for(actor).decide(view, game.rng)
+			if str(action.get("type", "")) == "challenge":
+				pending_wasdag_choice = true
+				pending_was_challenger_id = actor
+				status_text = "Je Was-claim wordt betwist. Wasdag nu, of laat de betwisting doorgaan."
+				return
 		_apply_ai(actor)
 
 
@@ -236,6 +307,8 @@ func _apply_ai(player_id: int) -> void:
 		game.request_knock(player_id)
 		status_text = "%s klopt (script). Inzet %d." % [_name(player_id), game.round_stake]
 		tutorial.force_ai_knock = false
+		tutorial.force_ai_knock_strong = false
+		tutorial.force_ai_knock_bluff = false
 		return
 	var view := PublicView.from_game(game, player_id)
 	var actor_ai: BaselineAI = _ai_for(player_id)
@@ -256,6 +329,8 @@ func _apply_ai(player_id: int) -> void:
 			status_text = game.last_event
 		"challenge":
 			game.challenge_vuile_was(player_id)
+			if power_service != null and flow != null:
+				power_service.resolve_wasdag(game, flow.campaign)
 			status_text = game.last_event
 		"decline_challenge":
 			game.decline_vuile_was_challenge(player_id)
@@ -365,3 +440,53 @@ func finish_huisvoordeel(index: int) -> bool:
 	status_text = "Huisvoordeel toegepast."
 	flow.persist()
 	return true
+
+
+func arm_wasdag() -> bool:
+	if power_service == null or flow == null:
+		return false
+	if not power_service.arm_wasdag(game, flow.campaign):
+		return false
+	status_text = "Wasdag klaar. De betwisting volgt."
+	_continue_pending_was_challenge()
+	return true
+
+
+func skip_wasdag() -> bool:
+	if not pending_wasdag_choice:
+		return false
+	_continue_pending_was_challenge()
+	return true
+
+
+func _continue_pending_was_challenge() -> void:
+	var challenger := pending_was_challenger_id
+	pending_wasdag_choice = false
+	pending_was_challenger_id = -1
+	if challenger >= 0:
+		game.challenge_vuile_was(challenger)
+		if power_service != null and flow != null:
+			power_service.resolve_wasdag(game, flow.campaign)
+			flow.persist()
+		status_text = game.last_event
+	resolve_ai()
+
+
+func arm_dubbel_kloppen() -> bool:
+	if power_service == null or flow == null:
+		return false
+	if not power_service.arm_dubbel_kloppen(game, flow.campaign):
+		return false
+	status_text = "Dubbel Kloppen: de volgende KLOP is geboost."
+	flow.persist()
+	return true
+
+
+func use_stalen_zenuwen() -> bool:
+	if power_service == null or flow == null:
+		return false
+	if not power_service.use_stalen_zenuwen(game, flow.campaign):
+		return false
+	status_text = "Stalen Zenuwen: je gaat mee; bij verlies -1 strafpunt."
+	flow.persist()
+	return human_mee()

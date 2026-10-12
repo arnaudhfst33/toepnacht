@@ -10,4 +10,6 @@ func _initialize() -> void:
 	failures += campaign.run_all()
 	var layout := LayoutTests.new()
 	failures += layout.run_all()
+	var task05 := Task05Tests.new()
+	failures += task05.run_all()
 	quit(1 if failures > 0 else 0)

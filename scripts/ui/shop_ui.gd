@@ -29,7 +29,10 @@ func _build() -> void:
 	UiLayout.fill_rect(root, 12)
 	add_child(root)
 	var title := UiLayout.wrap_label()
-	title.text = "De Avondwinkel"
+	var loc := ""
+	if Boot.flow != null:
+		loc = LocationId.display_name(Boot.flow.campaign.location)
+	title.text = "De Avondwinkel\n%s" % loc
 	root.add_child(title)
 	caps_label = UiLayout.wrap_label()
 	root.add_child(caps_label)

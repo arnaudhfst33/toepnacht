@@ -25,6 +25,8 @@ func grant_round_win(run: CampaignState, game: ToepenGame) -> int:
 	var total := grant_once(run, key, ROUND_WIN)
 	if game.human_knocked_this_round:
 		total += grant_once(run, key + ":knock", HUMAN_KNOCK_BONUS)
+	if game.human_dubbel_knock_this_round:
+		total += grant_once(run, key + ":dubbel", 2)
 	return total
 
 

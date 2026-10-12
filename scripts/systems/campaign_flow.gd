@@ -6,6 +6,7 @@ enum AfterPot {
 	SHOP,
 	LOCATION_COMPLETE,
 	RUN_RESET,
+	CAMPAIGN_COMPLETE,
 }
 
 var campaign: CampaignState
@@ -34,22 +35,48 @@ func persist() -> void:
 
 
 func start_new_studentenhuis_run() -> void:
-	campaign.start_new_studentenhuis_run()
+	start_new_run(LocationId.STUDENTENHUIS)
+
+
+func start_new_run(location: int) -> void:
+	campaign.start_new_run(location)
+	persist()
+
+
+func mark_tutorial(index: int) -> void:
+	match index:
+		1:
+			campaign.tutorial_blanco_done = true
+		2:
+			campaign.tutorial_kloppen_done = true
+		3:
+			campaign.tutorial_bluffen_done = true
+		4:
+			campaign.tutorial_was_done = true
+		5:
+			campaign.tutorial_toep_done = true
+		6:
+			campaign.tutorial_armoede_done = true
+		7:
+			campaign.tutorial_winkel_done = true
 	persist()
 
 
 func mark_tutorial_blanco() -> void:
-	campaign.tutorial_blanco_done = true
-	persist()
+	mark_tutorial(1)
 
 
 func mark_tutorial_kloppen() -> void:
-	campaign.tutorial_kloppen_done = true
-	persist()
+	mark_tutorial(2)
 
 
 func open_shop() -> void:
 	campaign.shop = ShopVisit.generate(rng)
+	persist()
+
+
+func open_scripted_shop(offerings: PackedStringArray) -> void:
+	campaign.shop = ShopVisit.scripted(offerings)
 	persist()
 
 
@@ -80,10 +107,15 @@ func resolve_pot_end(game: ToepenGame) -> AfterPot:
 		var boss := campaign.is_boss_potje()
 		economy.grant_potje_win(campaign, boss)
 		if boss:
-			campaign.studentenhuis_completed = true
-			campaign.highest_unlocked_location = maxi(campaign.highest_unlocked_location, LocationId.KROEG)
+			campaign.mark_location_completed(campaign.location)
+			var nxt := LocationId.next_location(campaign.location)
 			campaign.run_active = false
 			campaign.shop = null
+			if nxt < 0:
+				campaign.campaign_complete = true
+				persist()
+				return AfterPot.CAMPAIGN_COMPLETE
+			campaign.highest_unlocked_location = maxi(campaign.highest_unlocked_location, nxt)
 			persist()
 			return AfterPot.LOCATION_COMPLETE
 		open_shop()

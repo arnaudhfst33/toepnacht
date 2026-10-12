@@ -28,6 +28,8 @@ var power_row: HBoxContainer
 var huis_row: HFlowContainer
 var campaign_button: Button
 var title_label: Label
+var bg_rect: ColorRect
+var skip_wasdag_button: Button
 
 
 func _ready() -> void:
@@ -38,11 +40,31 @@ func _ready() -> void:
 		"blanco":
 			Boot.ensure_flow()
 			session.start_tutorial_blanco()
-			Boot.flow.mark_tutorial_blanco()
+			Boot.flow.mark_tutorial(1)
 		"kloppen":
 			Boot.ensure_flow()
 			session.start_tutorial_kloppen()
-			Boot.flow.mark_tutorial_kloppen()
+			Boot.flow.mark_tutorial(2)
+		"bluffen":
+			Boot.ensure_flow()
+			session.start_tutorial_bluffen()
+			Boot.flow.mark_tutorial(3)
+		"was":
+			Boot.ensure_flow()
+			session.start_tutorial_was()
+			Boot.flow.mark_tutorial(4)
+		"toep":
+			Boot.ensure_flow()
+			session.start_tutorial_toep()
+			Boot.flow.mark_tutorial(5)
+		"armoede":
+			Boot.ensure_flow()
+			session.start_tutorial_armoede()
+			Boot.flow.mark_tutorial(6)
+		"winkel":
+			Boot.ensure_flow()
+			session.start_tutorial_winkel()
+			Boot.flow.mark_tutorial(7)
 		_:
 			Boot.ensure_flow()
 			session.bind_campaign(Boot.flow)
@@ -53,10 +75,10 @@ func _ready() -> void:
 
 
 func _build_layout() -> void:
-	var bg := ColorRect.new()
-	bg.color = Color(0.12, 0.22, 0.16)
-	UiLayout.fill_rect(bg, 0)
-	add_child(bg)
+	bg_rect = ColorRect.new()
+	bg_rect.color = Color(0.12, 0.22, 0.16)
+	UiLayout.fill_rect(bg_rect, 0)
+	add_child(bg_rect)
 
 	var margins := UiLayout.portrait_margins()
 	add_child(margins)
@@ -164,6 +186,10 @@ func _build_layout() -> void:
 	decline_button.text = "LAAT"
 	decline_button.pressed.connect(func() -> void: session.human_decline_challenge(); _refresh())
 	actions.add_child(decline_button)
+	skip_wasdag_button = Button.new()
+	skip_wasdag_button.text = "GEEN WASDAG"
+	skip_wasdag_button.pressed.connect(func() -> void: session.skip_wasdag(); _refresh())
+	actions.add_child(skip_wasdag_button)
 
 	campaign_button = Button.new()
 	campaign_button.text = "VERDER"
@@ -209,11 +235,13 @@ func _play_card(card: Card) -> void:
 func _refresh() -> void:
 	var game := session.game
 	if session.flow != null:
-		var loc := LocationId.display_name(session.flow.campaign.location)
+		var loc_id := session.flow.campaign.location
+		bg_rect.color = LocationId.placeholder_color(loc_id)
+		var loc := LocationId.display_name(loc_id)
 		var potje := session.flow.campaign.potje
-		title_label.text = "%s potje %d" % [loc, potje]
+		title_label.text = "%s\n%s potje %d" % [loc.to_upper(), loc, potje]
 		if session.flow.campaign.is_boss_potje():
-			title_label.text += "\nBOSS: %s" % LocationId.boss_name(session.flow.campaign.location)
+			title_label.text += "\nBOSS: %s" % LocationId.boss_name(loc_id)
 		caps_label.text = "Dopjes %d" % session.flow.campaign.beer_caps
 		if session.flow.campaign.peek_label != "":
 			peek_label.text = "Spiek: %s" % session.flow.campaign.peek_label
@@ -222,6 +250,8 @@ func _refresh() -> void:
 	else:
 		caps_label.text = ""
 		peek_label.text = ""
+		if session.tutorial.kind != TutorialDirector.Kind.NONE:
+			title_label.text = session.tutorial.title
 	_rebuild_opponents(game)
 	scores_label.text = _score_line(game)
 	stake_label.text = "Inzet %d" % game.round_stake
@@ -253,10 +283,13 @@ func _refresh() -> void:
 		campaign_button.text = "AVONDWINKEL"
 	elif session.last_after_pot == CampaignFlow.AfterPot.LOCATION_COMPLETE:
 		campaign_button.text = "VOLTOOID"
+	elif session.last_after_pot == CampaignFlow.AfterPot.CAMPAIGN_COMPLETE:
+		campaign_button.text = "UITGESPEELD"
 	elif session.last_after_pot == CampaignFlow.AfterPot.RUN_RESET:
 		campaign_button.text = "POTJE 1"
 	else:
 		campaign_button.text = "VERDER"
+	skip_wasdag_button.visible = session.pending_wasdag_choice
 	if game.state == ToepenGame.State.GAME_END:
 		knock_button.visible = false
 		mee_button.visible = false
@@ -378,6 +411,12 @@ func _on_power_pressed(id: String) -> void:
 		PowerUpId.HUISVOORDEEL:
 			session.power_mode = "huis_discard"
 			session.status_text = "Kies een kaart om te vervangen."
+		PowerUpId.WASDAG:
+			session.arm_wasdag()
+		PowerUpId.DUBBEL_KLOPPEN:
+			session.arm_dubbel_kloppen()
+		PowerUpId.STALEN_ZENUWEN:
+			session.use_stalen_zenuwen()
 		_:
 			pass
 	_refresh()
@@ -418,6 +457,8 @@ func _on_campaign_continue() -> void:
 		CampaignFlow.AfterPot.SHOP:
 			get_tree().change_scene_to_file("res://scenes/shop.tscn")
 		CampaignFlow.AfterPot.LOCATION_COMPLETE:
+			get_tree().change_scene_to_file("res://scenes/complete.tscn")
+		CampaignFlow.AfterPot.CAMPAIGN_COMPLETE:
 			get_tree().change_scene_to_file("res://scenes/complete.tscn")
 		CampaignFlow.AfterPot.RUN_RESET:
 			session.start_campaign_pot()

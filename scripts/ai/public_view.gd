@@ -27,6 +27,9 @@ var flags_kans: bool = false
 var flags_vuile: bool = false
 var flags_witte: bool = false
 var own_armoede: bool = false
+var public_played_keys: PackedStringArray = PackedStringArray()
+var knock_initiator_id: int = -1
+var was_caller_id: int = -1
 
 
 static func from_game(game: ToepenGame, player_id: int) -> PublicView:
@@ -62,6 +65,9 @@ static func from_game(game: ToepenGame, player_id: int) -> PublicView:
 	view.flags_vuile = flags.vuile_was
 	view.flags_witte = flags.witte_was
 	view.own_armoede = game.player_is_armoede(player_id)
+	view.public_played_keys = game.public_played_keys.duplicate()
+	view.knock_initiator_id = game.knock_initiator_id
+	view.was_caller_id = game.vuile_was_caller_id
 	return view
 
 

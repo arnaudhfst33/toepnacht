@@ -19,24 +19,31 @@ func _ready() -> void:
 	box.add_child(title)
 	var sub := UiLayout.wrap_label()
 	Boot.ensure_flow()
-	var unlocked := LocationId.display_name(Boot.flow.campaign.highest_unlocked_location)
-	sub.text = "Studentenhuis\nVrijgespeeld tot: %s" % unlocked
-	if Boot.flow.campaign.studentenhuis_completed:
-		sub.text += "\nStudentenhuis voltooid.\nKroeg ontgrendeld."
+	sub.text = _status_line()
 	box.add_child(sub)
 	play_button = _add_button(box, "SPELEN")
 	play_button.pressed.connect(_on_play)
 	continue_button = _add_button(box, "DOORGAAN")
 	continue_button.pressed.connect(_on_continue)
-	_add_button(box, "Tutorial 1 Blanco").pressed.connect(func() -> void:
-		Boot.mode = "blanco"
-		get_tree().change_scene_to_file("res://scenes/table.tscn")
+	_add_button(box, "HOE WERKT TOEPEN?").pressed.connect(func() -> void:
+		get_tree().change_scene_to_file("res://scenes/tutorials.tscn")
 	)
-	_add_button(box, "Tutorial 2 Kloppen").pressed.connect(func() -> void:
-		Boot.mode = "kloppen"
-		get_tree().change_scene_to_file("res://scenes/table.tscn")
+	_add_button(box, "INSTELLINGEN").pressed.connect(func() -> void:
+		get_tree().change_scene_to_file("res://scenes/settings.tscn")
 	)
 	_refresh_buttons()
+
+
+func _status_line() -> String:
+	var c := Boot.flow.campaign
+	var line := "Vrijgespeeld tot: %s" % LocationId.display_name(c.highest_unlocked_location)
+	if c.campaign_complete:
+		line += "\nCampagne voltooid."
+	elif c.studentenhuis_completed:
+		line += "\nStudentenhuis voltooid."
+	if c.run_active:
+		line += "\nActieve run: %s potje %d" % [LocationId.display_name(c.location), c.potje]
+	return line
 
 
 func _refresh_buttons() -> void:
@@ -55,10 +62,7 @@ func _add_button(parent: Node, text: String) -> Button:
 
 
 func _on_play() -> void:
-	Boot.ensure_flow()
-	Boot.flow.start_new_studentenhuis_run()
-	Boot.mode = "play"
-	get_tree().change_scene_to_file("res://scenes/table.tscn")
+	get_tree().change_scene_to_file("res://scenes/campaign.tscn")
 
 
 func _on_continue() -> void:

@@ -11,6 +11,7 @@ func run_all() -> int:
 	_test_compact_card()
 	_test_fill_rect_margins()
 	_test_bottom_safe_margin()
+	_test_new_placeholder_screens()
 	print("")
 	print("Layout tests: %d passed, %d failed" % [_passed, _failures])
 	return _failures
@@ -46,3 +47,26 @@ func _test_bottom_safe_margin() -> void:
 	var margins := UiLayout.portrait_margins()
 	_expect(margins.get_theme_constant("margin_bottom") >= UiLayout.MIN_BOTTOM_SAFE_MARGIN, "portrait margins keep a bottom safe-area")
 	margins.free()
+
+
+func _test_new_placeholder_screens() -> void:
+	var save := SaveGame.new()
+	save.memory_only = true
+	Boot.flow = CampaignFlow.new(save)
+	for path in [
+		"res://scenes/campaign.tscn",
+		"res://scenes/tutorials.tscn",
+		"res://scenes/settings.tscn",
+		"res://scenes/complete.tscn",
+		"res://scenes/menu.tscn",
+	]:
+		var packed := load(path)
+		_expect(packed != null, "%s loads" % path)
+		var node: Control = packed.instantiate()
+		_expect(is_equal_approx(node.anchor_right, 1.0), "%s stretches horizontally" % path)
+		_expect(is_equal_approx(node.anchor_bottom, 1.0), "%s stretches vertically" % path)
+		node.free()
+	var margins := UiLayout.portrait_margins()
+	_expect(margins.get_theme_constant("margin_bottom") >= 28, "campaign screens keep bottom safe-area")
+	margins.free()
+	Boot.reset()

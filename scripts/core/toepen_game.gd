@@ -61,6 +61,10 @@ var round_serial: int = 0
 var last_toep_event_id: int = 0
 var human_knocked_this_round: bool = false
 var human_played_this_round: bool = false
+var human_dubbel_knock_this_round: bool = false
+var skip_caller_was_bluff_penalty: bool = false
+var stalen_zenuwen_round: bool = false
+var public_played_keys: PackedStringArray = PackedStringArray()
 var penalty_adjuster: Callable = Callable()
 
 
@@ -98,6 +102,10 @@ func start_round() -> void:
 	round_serial += 1
 	human_knocked_this_round = false
 	human_played_this_round = false
+	human_dubbel_knock_this_round = false
+	skip_caller_was_bluff_penalty = false
+	stalen_zenuwen_round = false
+	public_played_keys = PackedStringArray()
 	current_trick = Trick.new()
 	deck = Deck.standard()
 	deck.shuffle(rng)
@@ -221,12 +229,17 @@ func challenge_vuile_was(player_id: int) -> bool:
 	var genuine := _was_claim_is_genuine(caller)
 	_set_last_was_bluff(not genuine)
 	if genuine:
+		skip_caller_was_bluff_penalty = false
 		_replace_hand_from_stock(caller)
 		apply_penalty(player_id, WAS_PENALTY)
 		last_event = "%s was echt. Caller nieuwe hand; betwister +%d." % [_was_label(), WAS_PENALTY]
 	else:
-		apply_penalty(caller, WAS_PENALTY)
-		last_event = "%s was bluf. Caller +%d en houdt de hand." % [_was_label(), WAS_PENALTY]
+		if skip_caller_was_bluff_penalty and caller == HUMAN_PLAYER_ID:
+			skip_caller_was_bluff_penalty = false
+			last_event = "%s was bluf. Wasdag voorkomt het strafpunt; hand blijft." % _was_label()
+		else:
+			apply_penalty(caller, WAS_PENALTY)
+			last_event = "%s was bluf. Caller +%d en houdt de hand." % [_was_label(), WAS_PENALTY]
 	_finish_vuile_was_flow()
 	return true
 
@@ -364,6 +377,7 @@ func play_card(player_id: int, card: Card) -> PlayError:
 	var taken := player.take_card(card)
 	if player_id == HUMAN_PLAYER_ID:
 		human_played_this_round = true
+	public_played_keys.append(taken.key())
 	current_trick.add_play(player_id, taken)
 
 	if _all_active_have_played():
@@ -419,6 +433,10 @@ func setup_controlled_round(hands: Array, leader_id: int) -> void:
 	round_serial += 1
 	human_knocked_this_round = false
 	human_played_this_round = false
+	human_dubbel_knock_this_round = false
+	skip_caller_was_bluff_penalty = false
+	stalen_zenuwen_round = false
+	public_played_keys = PackedStringArray()
 	current_trick = Trick.new()
 	current_leader_id = leader_id
 	current_actor_id = leader_id
@@ -595,7 +613,11 @@ func _end_round(winner_id: int) -> void:
 		if player.is_eliminated:
 			continue
 		if player.is_active_in_round and player.id != winner_id:
-			apply_penalty(player.id, round_stake)
+			var amount := round_stake
+			if player.id == HUMAN_PLAYER_ID and stalen_zenuwen_round:
+				amount = maxi(0, amount - 1)
+				stalen_zenuwen_round = false
+			apply_penalty(player.id, amount)
 	if pot_winner_id >= 0:
 		state = State.GAME_END
 	else:

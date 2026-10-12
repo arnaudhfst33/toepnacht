@@ -21,6 +21,15 @@ static func from_dict(data: Dictionary) -> ShopVisit:
 	return visit
 
 
+static func scripted(ids: PackedStringArray) -> ShopVisit:
+	var visit := ShopVisit.new()
+	visit.active = true
+	var take := mini(3, ids.size())
+	for i in take:
+		visit.offerings.append(ids[i])
+	return visit
+
+
 static func generate(rng: RandomNumberGenerator) -> ShopVisit:
 	var visit := ShopVisit.new()
 	visit.active = true
