@@ -43,12 +43,25 @@ func start_campaign_pot() -> void:
 	tutorial = TutorialDirector.new()
 	game = ToepenGame.new()
 	_configure_campaign_table()
-	game.cards_open = false
+	game.cards_open = _campaign_cards_are_open()
 	game.start_pot()
 	status_text = "%s — potje %d." % [LocationId.display_name(flow.campaign.location), flow.campaign.potje]
+	if game.cards_open:
+		status_text += " Leerstand: kaarten van tegenstanders zijn open."
 	if flow.campaign.is_boss_potje():
 		status_text += " Boss: %s." % LocationId.boss_name(flow.campaign.location)
 	resolve_ai()
+
+
+func _campaign_cards_are_open() -> bool:
+	if flow == null:
+		return false
+	var campaign := flow.campaign
+	return (
+		campaign.location == LocationId.STUDENTENHUIS
+		and campaign.potje == 1
+		and bool(campaign.settings.get("open_first_pot", true))
+	)
 
 
 func _configure_campaign_table() -> void:

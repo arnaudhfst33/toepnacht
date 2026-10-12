@@ -12,6 +12,7 @@ func run_all() -> int:
 	_test_card_tooltip_explains_legality()
 	_test_final_trick_advice()
 	_test_studentenhuis_cast()
+	_test_first_campaign_pot_can_use_open_cards()
 	print("")
 	print("Advisor tests: %d passed, %d failed" % [_passed, _failures])
 	return _failures
@@ -70,6 +71,20 @@ func _test_studentenhuis_cast() -> void:
 		AiProfile.for_location(LocationId.STUDENTENHUIS, 1, 3).display_name,
 	]
 	_expect(names == ["Feut", "Sjaars", "Huisoudste"], "first table uses the agreed student cast")
+
+
+func _test_first_campaign_pot_can_use_open_cards() -> void:
+	var save := SaveGame.new()
+	save.memory_only = true
+	var flow := CampaignFlow.new(save)
+	flow.start_new_studentenhuis_run()
+	var session := TableSession.new()
+	session.bind_campaign(flow)
+	session.start_campaign_pot()
+	_expect(session.game.cards_open, "first Studentenhuis pot defaults to open cards")
+	flow.campaign.settings["open_first_pot"] = false
+	session.start_campaign_pot()
+	_expect(not session.game.cards_open, "open cards can be disabled")
 
 
 func _hands() -> Array:

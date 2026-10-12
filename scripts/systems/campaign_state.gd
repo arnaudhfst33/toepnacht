@@ -41,6 +41,7 @@ static func default_settings() -> Dictionary:
 		"sfx_volume": 1.0,
 		"haptics_on": true,
 		"tips_on": true,
+		"open_first_pot": true,
 		"animation_speed": "normal",
 	}
 

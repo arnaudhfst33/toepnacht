@@ -18,6 +18,7 @@ func _ready() -> void:
 	_toggle(box, "SFX", "sfx_on")
 	_toggle(box, "Haptics", "haptics_on")
 	_toggle(box, "Tips", "tips_on")
+	_toggle(box, "Open kaarten in eerste pot", "open_first_pot")
 	_animation_speed(box)
 	var animation_help := UiLayout.wrap_label()
 	animation_help.text = (
