@@ -223,18 +223,21 @@ func _build_layout() -> void:
 func _on_knock() -> void:
 	if session.human_knock():
 		_haptic(90, 0.75)
+		_sfx("knock")
 	_refresh()
 
 
 func _on_mee() -> void:
 	if session.human_mee():
 		_haptic(45, 0.45)
+		_sfx("decision")
 	_refresh()
 
 
 func _on_pas() -> void:
 	if session.human_pas():
 		_haptic(35, 0.3)
+		_sfx("decision")
 	_refresh()
 
 
@@ -246,6 +249,7 @@ func _on_next_round() -> void:
 func _play_card(card: Card) -> void:
 	if session.human_play(card):
 		_haptic(24, 0.22)
+		_sfx("card")
 	_refresh()
 
 
@@ -255,6 +259,15 @@ func _haptic(duration_ms: int, strength: float) -> void:
 	if not bool(session.flow.campaign.settings.get("haptics_on", true)):
 		return
 	Input.vibrate_handheld(duration_ms, strength)
+
+
+func _sfx(cue: String) -> void:
+	if session == null or session.flow == null:
+		return
+	var settings := session.flow.campaign.settings
+	if not bool(settings.get("sfx_on", true)):
+		return
+	RetroSfx.play(self, cue, float(settings.get("sfx_volume", 1.0)))
 
 
 func _refresh() -> void:
@@ -480,6 +493,7 @@ func _play_presentation_events() -> void:
 
 
 func _animate_play_event(event: Dictionary) -> void:
+	_sfx("card")
 	var ghost := Label.new()
 	ghost.text = str(event.get("label", "?"))
 	ghost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

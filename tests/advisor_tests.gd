@@ -14,6 +14,7 @@ func run_all() -> int:
 	_test_recommended_card_is_legal()
 	_test_studentenhuis_cast()
 	_test_first_campaign_pot_can_use_open_cards()
+	_test_retro_sfx_is_generated()
 	print("")
 	print("Advisor tests: %d passed, %d failed" % [_passed, _failures])
 	return _failures
@@ -99,6 +100,13 @@ func _test_first_campaign_pot_can_use_open_cards() -> void:
 	flow.campaign.settings["open_first_pot"] = false
 	session.start_campaign_pot()
 	_expect(not session.game.cards_open, "open cards can be disabled")
+
+
+func _test_retro_sfx_is_generated() -> void:
+	var card_sound := RetroSfx.make_stream("card")
+	var knock_sound := RetroSfx.make_stream("knock")
+	_expect(card_sound.data.size() > 0, "card sound contains generated samples")
+	_expect(knock_sound.data.size() > card_sound.data.size(), "knock sound is longer than card sound")
 
 
 func _hands() -> Array:
