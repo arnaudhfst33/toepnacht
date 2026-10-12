@@ -8,4 +8,6 @@ func _initialize() -> void:
 	failures += special.run_all()
 	var campaign := CampaignTests.new()
 	failures += campaign.run_all()
+	var layout := LayoutTests.new()
+	failures += layout.run_all()
 	quit(1 if failures > 0 else 0)

@@ -9,38 +9,30 @@ func _ready() -> void:
 	set_anchors_preset(PRESET_FULL_RECT)
 	var bg := ColorRect.new()
 	bg.color = Color(0.10, 0.14, 0.12)
-	bg.set_anchors_preset(PRESET_FULL_RECT)
+	UiLayout.fill_rect(bg, 0)
 	add_child(bg)
-	var box := VBoxContainer.new()
-	box.set_anchors_preset(PRESET_FULL_RECT)
-	box.offset_left = 40
-	box.offset_top = 80
-	box.offset_right = -40
-	box.offset_bottom = -80
-	box.add_theme_constant_override("separation", 16)
+	var box := UiLayout.vbox(12)
+	UiLayout.fill_rect(box, 16)
 	add_child(box)
-	title = Label.new()
+	title = UiLayout.wrap_label()
 	title.text = "Toepnacht"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
-	var sub := Label.new()
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var sub := UiLayout.wrap_label()
 	Boot.ensure_flow()
 	var unlocked := LocationId.display_name(Boot.flow.campaign.highest_unlocked_location)
-	sub.text = "Studentenhuis  ·  vrijgespeeld tot: %s" % unlocked
+	sub.text = "Studentenhuis\nVrijgespeeld tot: %s" % unlocked
 	if Boot.flow.campaign.studentenhuis_completed:
-		sub.text += "\nStudentenhuis voltooid — Kroeg ontgrendeld."
+		sub.text += "\nStudentenhuis voltooid.\nKroeg ontgrendeld."
 	box.add_child(sub)
 	play_button = _add_button(box, "SPELEN")
 	play_button.pressed.connect(_on_play)
 	continue_button = _add_button(box, "DOORGAAN")
 	continue_button.pressed.connect(_on_continue)
-	_add_button(box, "TUTORIAL 1 — Blanco Toepen").pressed.connect(func() -> void:
+	_add_button(box, "Tutorial 1 Blanco").pressed.connect(func() -> void:
 		Boot.mode = "blanco"
 		get_tree().change_scene_to_file("res://scenes/table.tscn")
 	)
-	_add_button(box, "TUTORIAL 2 — Kloppen").pressed.connect(func() -> void:
+	_add_button(box, "Tutorial 2 Kloppen").pressed.connect(func() -> void:
 		Boot.mode = "kloppen"
 		get_tree().change_scene_to_file("res://scenes/table.tscn")
 	)
@@ -56,6 +48,8 @@ func _refresh_buttons() -> void:
 func _add_button(parent: Node, text: String) -> Button:
 	var button := Button.new()
 	button.text = text
+	UiLayout.fit_button(button)
+	button.custom_minimum_size = Vector2(0, 44)
 	parent.add_child(button)
 	return button
 

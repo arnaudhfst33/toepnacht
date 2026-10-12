@@ -23,32 +23,25 @@ func _ready() -> void:
 func _build() -> void:
 	var bg := ColorRect.new()
 	bg.color = Color(0.16, 0.12, 0.08)
-	bg.set_anchors_preset(PRESET_FULL_RECT)
+	UiLayout.fill_rect(bg, 0)
 	add_child(bg)
-	var root := VBoxContainer.new()
-	root.set_anchors_preset(PRESET_FULL_RECT)
-	root.offset_left = 20
-	root.offset_top = 24
-	root.offset_right = -20
-	root.offset_bottom = -24
-	root.add_theme_constant_override("separation", 12)
+	var root := UiLayout.vbox(10)
+	UiLayout.fill_rect(root, 12)
 	add_child(root)
-	var title := Label.new()
+	var title := UiLayout.wrap_label()
 	title.text = "De Avondwinkel"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(title)
-	caps_label = Label.new()
-	caps_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	caps_label = UiLayout.wrap_label()
 	root.add_child(caps_label)
-	slots_label = Label.new()
-	slots_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	slots_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	slots_label = UiLayout.wrap_label()
 	root.add_child(slots_label)
-	offer_row = VBoxContainer.new()
-	offer_row.add_theme_constant_override("separation", 8)
+	offer_row = UiLayout.vbox(10)
+	offer_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(offer_row)
 	var verder := Button.new()
 	verder.text = "VERDER"
+	UiLayout.fit_button(verder)
+	verder.custom_minimum_size = Vector2(0, 44)
 	verder.pressed.connect(_on_verder)
 	root.add_child(verder)
 
@@ -62,28 +55,29 @@ func _refresh() -> void:
 			held.append(PowerUpCatalog.display_name(run.inventory[i]))
 		else:
 			held.append("(leeg)")
-	slots_label.text = "Slots: %s  ·  %s" % [held[0], held[1]]
+	slots_label.text = "Slot 1: %s\nSlot 2: %s" % [held[0], held[1]]
 	for child in offer_row.get_children():
 		child.queue_free()
 	if run.shop == null:
 		return
 	for i in run.shop.offerings.size():
 		var id := str(run.shop.offerings[i])
-		var row := HBoxContainer.new()
-		var info := Label.new()
-		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		info.text = "%s — %d dopjes" % [PowerUpCatalog.display_name(id), PowerUpCatalog.cost(id)]
-		row.add_child(info)
+		var card := UiLayout.vbox(4)
+		var info := UiLayout.wrap_label(HORIZONTAL_ALIGNMENT_LEFT)
+		info.text = "%s\n%d dopjes" % [PowerUpCatalog.display_name(id), PowerUpCatalog.cost(id)]
+		card.add_child(info)
 		var buy := Button.new()
 		buy.text = "KOOP"
+		UiLayout.fit_button(buy)
+		buy.custom_minimum_size = Vector2(0, 36)
 		var idx := i
 		buy.pressed.connect(func() -> void:
 			Boot.flow.buy_shop_index(idx)
 			_refresh()
 		)
 		buy.disabled = (not run.has_inventory_slot()) or run.beer_caps < PowerUpCatalog.cost(id)
-		row.add_child(buy)
-		offer_row.add_child(row)
+		card.add_child(buy)
+		offer_row.add_child(card)
 
 
 func _on_verder() -> void:
