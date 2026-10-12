@@ -38,6 +38,12 @@ func remaining() -> int:
 	return cards.size()
 
 
+func return_to_stock_deterministic(card: Card) -> void:
+	if card == null:
+		return
+	cards.insert(0, card)
+
+
 func snapshot_keys() -> PackedStringArray:
 	var keys := PackedStringArray()
 	for card in cards:

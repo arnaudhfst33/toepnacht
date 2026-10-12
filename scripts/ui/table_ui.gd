@@ -22,6 +22,12 @@ var challenge_button: Button
 var decline_button: Button
 var tip_label: Label
 var armoede_label: Label
+var caps_label: Label
+var peek_label: Label
+var power_row: HBoxContainer
+var huis_row: HBoxContainer
+var campaign_button: Button
+var title_label: Label
 
 
 func _ready() -> void:
@@ -30,11 +36,19 @@ func _ready() -> void:
 	session = TableSession.new()
 	match Boot.mode:
 		"blanco":
+			Boot.ensure_flow()
 			session.start_tutorial_blanco()
+			Boot.flow.mark_tutorial_blanco()
 		"kloppen":
+			Boot.ensure_flow()
 			session.start_tutorial_kloppen()
+			Boot.flow.mark_tutorial_kloppen()
 		_:
-			session.start_new_pot()
+			Boot.ensure_flow()
+			session.bind_campaign(Boot.flow)
+			if not Boot.flow.campaign.run_active:
+				Boot.flow.start_new_studentenhuis_run()
+			session.start_campaign_pot()
 	_refresh()
 
 
@@ -54,9 +68,14 @@ func _build_layout() -> void:
 	add_child(root)
 
 	var title := Label.new()
+	title_label = title
 	title.text = "Toepnacht — placeholder tafel"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(title)
+
+	caps_label = Label.new()
+	caps_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	root.add_child(caps_label)
 
 	opponents_label = Label.new()
 	opponents_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -88,6 +107,21 @@ func _build_layout() -> void:
 	armoede_label = Label.new()
 	armoede_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(armoede_label)
+
+	peek_label = Label.new()
+	peek_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	peek_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	root.add_child(peek_label)
+
+	power_row = HBoxContainer.new()
+	power_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	power_row.add_theme_constant_override("separation", 8)
+	root.add_child(power_row)
+
+	huis_row = HBoxContainer.new()
+	huis_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	huis_row.add_theme_constant_override("separation", 8)
+	root.add_child(huis_row)
 
 	var actions := HBoxContainer.new()
 	actions.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -143,6 +177,11 @@ func _build_layout() -> void:
 	decline_button.pressed.connect(func() -> void: session.human_decline_challenge(); _refresh())
 	actions.add_child(decline_button)
 
+	campaign_button = Button.new()
+	campaign_button.text = "VERDER"
+	campaign_button.pressed.connect(_on_campaign_continue)
+	actions.add_child(campaign_button)
+
 	var hand_title := Label.new()
 	hand_title.text = "Jouw hand"
 	hand_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -181,6 +220,20 @@ func _play_card(card: Card) -> void:
 
 func _refresh() -> void:
 	var game := session.game
+	if session.flow != null:
+		var loc := LocationId.display_name(session.flow.campaign.location)
+		var potje := session.flow.campaign.potje
+		title_label.text = "%s — potje %d" % [loc, potje]
+		if session.flow.campaign.is_boss_potje():
+			title_label.text += "  ·  BOSS: %s" % LocationId.boss_name(session.flow.campaign.location)
+		caps_label.text = "Bierdopjes: %d" % session.flow.campaign.beer_caps
+		if session.flow.campaign.peek_label != "":
+			peek_label.text = "Spiek (alleen jij): %s" % session.flow.campaign.peek_label
+		else:
+			peek_label.text = ""
+	else:
+		caps_label.text = ""
+		peek_label.text = ""
 	opponents_label.text = _opponent_line(game)
 	scores_label.text = _score_line(game)
 	stake_label.text = "Inzet: %d" % game.round_stake
@@ -188,6 +241,8 @@ func _refresh() -> void:
 	status_label.text = session.status_text
 	tip_label.text = session.tip_text
 	armoede_label.text = _armoede_line(game)
+	_rebuild_power_slots()
+	_rebuild_huis_row()
 	_rebuild_hand(game)
 
 	var human_turn := game.state == ToepenGame.State.NORMAL_PLAY and game.current_actor_id == 0
@@ -205,6 +260,15 @@ func _refresh() -> void:
 	skip_specials_button.visible = human_specials
 	challenge_button.visible = human_challenge
 	decline_button.visible = human_challenge
+	campaign_button.visible = game.state == ToepenGame.State.GAME_END and session.flow != null
+	if session.last_after_pot == CampaignFlow.AfterPot.SHOP:
+		campaign_button.text = "NAAR DE AVONDWINKEL"
+	elif session.last_after_pot == CampaignFlow.AfterPot.LOCATION_COMPLETE:
+		campaign_button.text = "STUDENTENHUIS VOLTOOID"
+	elif session.last_after_pot == CampaignFlow.AfterPot.RUN_RESET:
+		campaign_button.text = "TERUG NAAR POTJE 1"
+	else:
+		campaign_button.text = "VERDER"
 	if game.state == ToepenGame.State.GAME_END:
 		knock_button.visible = false
 		mee_button.visible = false
@@ -224,7 +288,7 @@ func _opponent_line(game: ToepenGame) -> String:
 			for card in player.hand:
 				cards.append(str(card))
 			status += " [" + ", ".join(cards) + "]"
-		parts.append("AI %d — %d/15 — %s" % [i, player.penalty_points, status])
+		parts.append("%s — %d/15 — %s" % [session.opponent_name(i), player.penalty_points, status])
 	return "   |   ".join(parts)
 
 
@@ -245,7 +309,7 @@ func _trick_line(game: ToepenGame) -> String:
 	var parts: PackedStringArray = PackedStringArray()
 	for i in game.current_trick.play_count():
 		var pid: int = game.current_trick.player_ids[i]
-		var pname := "Jij" if pid == 0 else "AI %d" % pid
+		var pname := "Jij" if pid == 0 else session.opponent_name(pid)
 		parts.append("%s: %s" % [pname, str(game.current_trick.cards[i])])
 	return "Tafel: " + "  ·  ".join(parts)
 
@@ -265,6 +329,102 @@ func _rebuild_hand(game: ToepenGame) -> void:
 				is_legal = true
 				break
 		button.disabled = (not human_turn) or (not is_legal)
+		if session.power_mode == "ruilen" or session.power_mode == "huis_discard":
+			button.disabled = false
 		var captured := card
-		button.pressed.connect(func() -> void: _play_card(captured))
+		button.pressed.connect(func() -> void:
+			if session.power_mode == "ruilen":
+				session.use_kaartje_ruilen(captured)
+				_refresh()
+			elif session.power_mode == "huis_discard":
+				session.begin_huisvoordeel(captured)
+				_refresh()
+			else:
+				_play_card(captured)
+		)
 		hand_row.add_child(button)
+
+
+func _rebuild_power_slots() -> void:
+	for child in power_row.get_children():
+		child.queue_free()
+	if session.flow == null:
+		return
+	var inv := session.flow.campaign.inventory
+	for slot in PowerUpId.MAX_SLOTS:
+		var button := Button.new()
+		if slot >= inv.size():
+			button.text = "Slot %d (leeg)" % (slot + 1)
+			button.disabled = true
+		else:
+			var id := str(inv[slot])
+			button.text = PowerUpCatalog.display_name(id)
+			if PowerUpCatalog.is_passive(id):
+				button.disabled = true
+				button.text += " (auto)"
+			else:
+				var legal := session.can_use_power(id)
+				button.disabled = not legal
+				var captured := id
+				button.pressed.connect(func() -> void: _on_power_pressed(captured))
+		power_row.add_child(button)
+
+
+func _on_power_pressed(id: String) -> void:
+	match id:
+		PowerUpId.KAARTJE_RUILEN:
+			session.power_mode = "ruilen"
+			session.status_text = "Kies een kaart om te ruilen."
+		PowerUpId.EVEN_SPIEKEN:
+			session.power_mode = "peek"
+			session.status_text = "Kies een tegenstander om te spieken."
+		PowerUpId.RONDJE_VAN_DE_ZAAK:
+			session.use_rondje()
+		PowerUpId.HUISVOORDEEL:
+			session.power_mode = "huis_discard"
+			session.status_text = "Kies een kaart om te vervangen."
+		_:
+			pass
+	_refresh()
+
+
+func _rebuild_huis_row() -> void:
+	for child in huis_row.get_children():
+		child.queue_free()
+	if session.power_mode == "peek":
+		for pid in range(1, ToepenGame.PLAYER_COUNT):
+			var button := Button.new()
+			button.text = "Spiek %s" % session.opponent_name(pid)
+			var captured := pid
+			button.pressed.connect(func() -> void:
+				session.use_even_spieken(captured)
+				_refresh()
+			)
+			huis_row.add_child(button)
+		return
+	if session.power_mode != "huis_choose" or session.power_service == null:
+		return
+	for i in session.power_service.pending_huisvoordeel_candidates.size():
+		var card: Card = session.power_service.pending_huisvoordeel_candidates[i]
+		var button := Button.new()
+		button.text = str(card)
+		var idx := i
+		button.pressed.connect(func() -> void:
+			session.finish_huisvoordeel(idx)
+			_refresh()
+		)
+		huis_row.add_child(button)
+
+
+func _on_campaign_continue() -> void:
+	match session.last_after_pot:
+		CampaignFlow.AfterPot.SHOP:
+			get_tree().change_scene_to_file("res://scenes/shop.tscn")
+		CampaignFlow.AfterPot.LOCATION_COMPLETE:
+			get_tree().change_scene_to_file("res://scenes/complete.tscn")
+		CampaignFlow.AfterPot.RUN_RESET:
+			session.start_campaign_pot()
+			_refresh()
+		_:
+			get_tree().change_scene_to_file("res://scenes/menu.tscn")
+

@@ -57,6 +57,11 @@ var last_witte_was_declarer_id: int = -1
 var last_witte_was_bluff: bool = false
 var was_claim_is_witte: bool = false
 var cards_open: bool = false
+var round_serial: int = 0
+var last_toep_event_id: int = 0
+var human_knocked_this_round: bool = false
+var human_played_this_round: bool = false
+var penalty_adjuster: Callable = Callable()
 
 
 func _init(p_rng: RandomNumberGenerator = null) -> void:
@@ -90,6 +95,9 @@ func start_round() -> void:
 	vuile_was_challenge_pending.clear()
 	was_claim_is_witte = false
 	round_stake = BASE_ROUND_STAKE
+	round_serial += 1
+	human_knocked_this_round = false
+	human_played_this_round = false
 	current_trick = Trick.new()
 	deck = Deck.standard()
 	deck.shuffle(rng)
@@ -291,6 +299,8 @@ func request_knock(player_id: int) -> bool:
 	while id != player_id:
 		knock_pending.append(id)
 		id = _next_active_in_round(id)
+	if player_id == HUMAN_PLAYER_ID:
+		human_knocked_this_round = true
 	if knock_pending.is_empty():
 		_finish_knock()
 	return true
@@ -352,6 +362,8 @@ func play_card(player_id: int, card: Card) -> PlayError:
 		return PlayError.ILLEGAL_FOLLOW_SUIT
 
 	var taken := player.take_card(card)
+	if player_id == HUMAN_PLAYER_ID:
+		human_played_this_round = true
 	current_trick.add_play(player_id, taken)
 
 	if _all_active_have_played():
@@ -363,6 +375,15 @@ func play_card(player_id: int, card: Card) -> PlayError:
 
 func apply_penalty(player_id: int, amount: int) -> void:
 	if amount <= 0:
+		return
+	var intercepted := false
+	if penalty_adjuster.is_valid():
+		amount = int(penalty_adjuster.call(player_id, amount))
+		intercepted = amount <= 0
+	if amount <= 0:
+		if intercepted:
+			_announce_armoede()
+			_refresh_pot_winner()
 		return
 	var player := players[player_id]
 	if player.is_eliminated:
@@ -395,6 +416,9 @@ func setup_controlled_round(hands: Array, leader_id: int) -> void:
 	vuile_was_challenge_pending.clear()
 	was_claim_is_witte = false
 	round_stake = BASE_ROUND_STAKE
+	round_serial += 1
+	human_knocked_this_round = false
+	human_played_this_round = false
 	current_trick = Trick.new()
 	current_leader_id = leader_id
 	current_actor_id = leader_id
@@ -439,6 +463,7 @@ func _advance_specials(player_id: int) -> void:
 
 func _resolve_toep(player_id: int) -> void:
 	last_toep_declarer_id = player_id
+	last_toep_event_id += 1
 	last_event = "Speler %d declareert Toep. Anderen +%d." % [player_id, TOEP_PENALTY]
 	for player in players:
 		if player.id == player_id or player.is_eliminated:

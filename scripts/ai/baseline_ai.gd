@@ -3,6 +3,12 @@ extends RefCounted
 
 ## Simple imperfect AI. Uses PublicView only — never hidden opponent cards.
 
+var profile: AiProfile
+
+
+func _init(p_profile: AiProfile = null) -> void:
+	profile = p_profile if p_profile != null else AiProfile.baseline()
+
 
 func decide(view: PublicView, rng: RandomNumberGenerator) -> Dictionary:
 	if view.can_declare_toep and rng.randf() < 0.92:
@@ -54,21 +60,22 @@ func choose_mee(game: ToepenGame, player_id: int) -> bool:
 
 
 func _want_knock(view: PublicView, rng: RandomNumberGenerator) -> bool:
+	var scale := profile.knock_scale
 	if view.round_stake >= 3:
-		return rng.randf() < 0.05
+		return rng.randf() < clampf(0.05 * scale, 0.0, 0.35)
 	var tens := 0
 	for card in view.own_hand:
 		if card.rank == Card.Rank.TEN:
 			tens += 1
 	if tens >= 2:
-		return rng.randf() < 0.55
+		return rng.randf() < clampf(0.55 * scale, 0.0, 0.92)
 	if tens == 1:
-		return rng.randf() < 0.22
-	return rng.randf() < 0.08
+		return rng.randf() < clampf(0.22 * scale, 0.0, 0.75)
+	return rng.randf() < clampf(0.08 * scale, 0.0, 0.45)
 
 
 func _want_mee(view: PublicView, rng: RandomNumberGenerator) -> bool:
-	if rng.randf() < 0.12:
+	if rng.randf() < profile.mee_pass_chaos:
 		return rng.randf() < 0.5
 	var high := 0
 	for card in view.own_hand:
@@ -84,7 +91,7 @@ func _want_mee(view: PublicView, rng: RandomNumberGenerator) -> bool:
 func _choose_card(view: PublicView, rng: RandomNumberGenerator) -> Card:
 	if view.legal_cards.is_empty():
 		return null
-	var aggressive := rng.randf() < 0.45
+	var aggressive := rng.randf() < profile.aggressive_card_rate
 	var best: Card = view.legal_cards[0]
 	for card in view.legal_cards:
 		if aggressive:
@@ -93,6 +100,6 @@ func _choose_card(view: PublicView, rng: RandomNumberGenerator) -> Card:
 		else:
 			if card.strength() < best.strength():
 				best = card
-	if rng.randf() < 0.12:
+	if rng.randf() < profile.error_rate:
 		return view.legal_cards[rng.randi_range(0, view.legal_cards.size() - 1)]
 	return best

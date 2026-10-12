@@ -6,4 +6,6 @@ func _initialize() -> void:
 	var failures := core.run_all()
 	var special := SpecialTests.new()
 	failures += special.run_all()
+	var campaign := CampaignTests.new()
+	failures += campaign.run_all()
 	quit(1 if failures > 0 else 0)
