@@ -18,6 +18,14 @@ func _ready() -> void:
 	_toggle(box, "SFX", "sfx_on")
 	_toggle(box, "Haptics", "haptics_on")
 	_toggle(box, "Tips", "tips_on")
+	_animation_speed(box)
+	var animation_help := UiLayout.wrap_label()
+	animation_help.text = (
+		"Rustig laat kaartbewegingen langer zien. "
+		+ "Snel is bedoeld voor spelers die Toepen al kennen."
+	)
+	animation_help.modulate = Color(0.78, 0.78, 0.72)
+	box.add_child(animation_help)
 	var back := Button.new()
 	back.text = "TERUG"
 	UiLayout.fit_button(back)
@@ -46,3 +54,23 @@ func _toggle(parent: Node, label: String, key: String) -> void:
 func _refresh_toggle(button: Button, label: String, key: String) -> void:
 	var on := bool(Boot.flow.campaign.settings.get(key, true))
 	button.text = "%s: %s" % [label, "aan" if on else "uit"]
+
+
+func _animation_speed(parent: Node) -> void:
+	var button := Button.new()
+	_refresh_animation_speed(button)
+	UiLayout.fit_button(button)
+	button.custom_minimum_size = Vector2(0, 40)
+	button.pressed.connect(func() -> void:
+		var settings := Boot.flow.campaign.settings
+		var current := str(settings.get("animation_speed", "normal"))
+		settings["animation_speed"] = "fast" if current == "normal" else "normal"
+		_refresh_animation_speed(button)
+		Boot.flow.persist()
+	)
+	parent.add_child(button)
+
+
+func _refresh_animation_speed(button: Button) -> void:
+	var speed := str(Boot.flow.campaign.settings.get("animation_speed", "normal"))
+	button.text = "Animaties: %s" % ("snel" if speed == "fast" else "rustig")
