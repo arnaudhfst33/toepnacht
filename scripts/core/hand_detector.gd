@@ -33,3 +33,31 @@ static func analyze(hand: Array[Card]) -> SpecialHandFlags:
 
 static func is_armoede(penalty_points: int) -> bool:
 	return penalty_points == 14
+
+
+static func kans_off_card(hand: Array[Card]) -> Card:
+	var rank_counts := {}
+	for card in hand:
+		rank_counts[card.rank] = int(rank_counts.get(card.rank, 0)) + 1
+	var triple_rank: Variant = null
+	for rank in rank_counts:
+		if int(rank_counts[rank]) == 3:
+			triple_rank = rank
+			break
+	if triple_rank == null:
+		return null
+	for card in hand:
+		if card.rank != triple_rank:
+			return card
+	return null
+
+
+static func kans_triple_rank(hand: Array[Card]) -> int:
+	var rank_counts := {}
+	for card in hand:
+		rank_counts[card.rank] = int(rank_counts.get(card.rank, 0)) + 1
+	for rank in rank_counts:
+		if int(rank_counts[rank]) == 3:
+			return int(rank)
+	return -1
+

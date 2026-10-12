@@ -30,10 +30,26 @@ Een vrijgespeelde locatie blijft beschikbaar. Verlies binnen een locatie = terug
 - Kleur bekennen is verplicht wanneer mogelijk.
 - De vierde/laatste slag bepaalt de winnaar van de ronde.
 
+## Uitkomst
+- De menselijke speler komt uit in het allereerste echte potje.
+- Daarna komt de winnaar van de vorige ronde uit in de volgende ronde.
+
+## Scoring
+- De inzet van een ronde start op 1.
+- Een normale rondeverlies (geen extra kloppen) geeft +1 strafpunt.
+- Elke klop verhoogt de huidige inzet van de ronde met +1.
+- Wie PAS zegt na een klop krijgt meteen strafpunten gelijk aan de huidige inzet (ná de verhoging) en verlaat de huidige ronde.
+- Wie MEE gaat blijft in de ronde voor de verhoogde inzet.
+- Elke volgende klop verhoogt de inzet opnieuw met +1.
+- De rondewinnaar krijgt 0 strafpunten.
+- Actieve niet-winnaars aan het einde van de ronde krijgen strafpunten gelijk aan de uiteindelijke huidige inzet.
+
 ## Kloppen
 - Kloppen gebeurt vóór het spelen van een kaart.
 - Eén druk op KLOP activeert direct het klopmoment.
 - Andere actieve spelers kiezen MEE of PAS.
+- PAS mag alleen als antwoord op een klop, niet als vrije actie.
+- Wie in de huidige slag al een kaart heeft gespeeld, mag in diezelfde klopronde niet meer PAS zeggen.
 - Tips adviseren eventueel, maar beslissen nooit voor de speler.
 
 ## Armoede
@@ -50,6 +66,17 @@ Vuile Was:
 
 Witte Was:
 - 4 plaatjes.
+- Zelfde call/betwist-flow als Vuile Was.
+- Bluf: caller +1 strafpunt en houdt zijn kaarten.
+- Echt: caller krijgt 4 nieuwe kaarten; betwister +1 strafpunt.
+
+Als een Vuile Was- of Witte Was-claim niet wordt betwist, geldt de claim als geloofd en krijgt de caller 4 nieuwe kaarten.
+
+Kaarten die bij Vuile Was, Witte Was of Kans op Toep worden weggelegd of vervangen, gaan tijdens die hand niet terug in de trekstapel.
+
+Aan het begin van een nieuwe ronde wordt het volledige 32-kaarten-deck opnieuw opgebouwd en geschud.
+
+Delen gebeurt één kaart tegelijk, met de klok mee, te beginnen bij de speler die deze ronde uitkomt.
 
 ## Toep
 - 4 kaarten van dezelfde waarde = Toep.

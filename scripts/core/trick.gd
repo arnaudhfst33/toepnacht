@@ -24,14 +24,28 @@ func is_complete(expected_plays: int) -> bool:
 
 
 func winner_id() -> int:
+	return winner_id_among([])
+
+
+func winner_id_among(eligible_ids: Array[int]) -> int:
 	assert(has_led_suit and cards.size() > 0, "Cannot resolve an empty trick.")
-	var best_index := 0
+	var best_index := -1
 	var best_strength := -1
 	for i in cards.size():
+		if eligible_ids.size() > 0 and not eligible_ids.has(player_ids[i]):
+			continue
 		var card: Card = cards[i]
 		if card.suit != led_suit:
 			continue
 		if card.strength() > best_strength:
 			best_strength = card.strength()
 			best_index = i
+	if best_index < 0:
+		if eligible_ids.size() > 0:
+			return winner_id_among([])
+		return player_ids[0]
 	return player_ids[best_index]
+
+
+func has_play_from(player_id: int) -> bool:
+	return player_ids.has(player_id)

@@ -23,6 +23,17 @@ func run_all() -> int:
 	_test_same_seed_same_shuffle()
 	_test_human_leads_first_round()
 	_test_previous_round_winner_leads()
+	_test_normal_round_scoring()
+	_test_knock_raises_stake()
+	_test_pass_pays_immediately()
+	_test_mee_does_not_pay_yet()
+	_test_second_knock_raises_stake()
+	_test_round_end_pays_final_stake()
+	_test_pass_can_eliminate()
+	_test_knock_rejected_off_turn()
+	_test_all_pass_knocker_wins()
+	_test_placeholder_ai_uses_own_legal_cards()
+	_test_table_session_starts()
 	print("")
 	print("Core tests: %d passed, %d failed" % [_passed, _failures])
 	return _failures
@@ -163,6 +174,10 @@ func _test_fourth_trick_winner_wins_round() -> void:
 	_expect_eq(game.state, ToepenGame.State.ROUND_END, "round ends after fourth trick")
 	_expect_eq(game.last_round_winner_id, 1, "fourth-trick winner wins the round")
 	_expect_eq(game.tricks_completed, 4, "four tricks were played")
+	_expect_eq(game.players[0].penalty_points, 1, "active non-winner p0 gets +1")
+	_expect_eq(game.players[1].penalty_points, 0, "round winner gets 0")
+	_expect_eq(game.players[2].penalty_points, 1, "active non-winner p2 gets +1")
+	_expect_eq(game.players[3].penalty_points, 1, "active non-winner p3 gets +1")
 
 
 func _test_15_points_eliminates() -> void:
@@ -277,3 +292,174 @@ func _test_previous_round_winner_leads() -> void:
 	game.last_round_winner_id = 2
 	game.start_round()
 	_expect_eq(game.current_leader_id, 2, "previous round winner leads the next round")
+
+
+func _p1_wins_fourth_hands() -> Array:
+	return [
+		[
+			_c(Card.Suit.HEARTS, Card.Rank.TEN),
+			_c(Card.Suit.HEARTS, Card.Rank.NINE),
+			_c(Card.Suit.HEARTS, Card.Rank.EIGHT),
+			_c(Card.Suit.CLUBS, Card.Rank.JACK),
+		],
+		[
+			_c(Card.Suit.HEARTS, Card.Rank.JACK),
+			_c(Card.Suit.HEARTS, Card.Rank.QUEEN),
+			_c(Card.Suit.HEARTS, Card.Rank.KING),
+			_c(Card.Suit.CLUBS, Card.Rank.TEN),
+		],
+		[
+			_c(Card.Suit.DIAMONDS, Card.Rank.JACK),
+			_c(Card.Suit.DIAMONDS, Card.Rank.QUEEN),
+			_c(Card.Suit.DIAMONDS, Card.Rank.KING),
+			_c(Card.Suit.DIAMONDS, Card.Rank.ACE),
+		],
+		[
+			_c(Card.Suit.SPADES, Card.Rank.JACK),
+			_c(Card.Suit.SPADES, Card.Rank.QUEEN),
+			_c(Card.Suit.SPADES, Card.Rank.KING),
+			_c(Card.Suit.SPADES, Card.Rank.ACE),
+		],
+	]
+
+
+func _play_out_p1_wins_fourth(game: ToepenGame) -> void:
+	for _trick_i in 4:
+		for _step in 4:
+			if game.state != ToepenGame.State.NORMAL_PLAY:
+				return
+			var actor := game.current_actor_id
+			var legal := game.legal_cards(actor)
+			if legal.is_empty():
+				return
+			game.play_card(actor, legal[0])
+
+
+func _all_mee(game: ToepenGame) -> void:
+	while game.state == ToepenGame.State.KNOCK_DECISIONS:
+		var responder := game.current_knock_responder_id()
+		if responder < 0:
+			break
+		game.respond_to_knock(responder, true)
+
+
+func _test_normal_round_scoring() -> void:
+	var game := ToepenGame.new()
+	game.setup_controlled_round(_p1_wins_fourth_hands(), 0)
+	_play_out_p1_wins_fourth(game)
+	_expect_eq(game.round_stake, 1, "stake stays 1 without knocks")
+	_expect_eq(game.players[1].penalty_points, 0, "winner scores 0 without knocks")
+	_expect_eq(game.players[0].penalty_points, 1, "loser scores +1 without knocks")
+
+
+func _test_knock_raises_stake() -> void:
+	var game := ToepenGame.new()
+	game.setup_controlled_round(_p1_wins_fourth_hands(), 0)
+	_expect(game.request_knock(0), "leader may knock before playing")
+	_expect_eq(game.round_stake, 2, "knock raises stake from 1 to 2")
+	_expect_eq(game.state, ToepenGame.State.KNOCK_DECISIONS, "knock enters decision state")
+
+
+func _test_pass_pays_immediately() -> void:
+	var game := ToepenGame.new()
+	game.setup_controlled_round(_p1_wins_fourth_hands(), 0)
+	game.request_knock(0)
+	_expect(game.respond_to_knock(1, false), "p1 may pass")
+	_expect_eq(game.players[1].penalty_points, 2, "passer pays current stake immediately")
+	_expect(not game.players[1].is_active_in_round, "passer leaves the round")
+	_expect_eq(game.players[0].penalty_points, 0, "knocker does not pay on someone else's pass")
+
+
+func _test_mee_does_not_pay_yet() -> void:
+	var game := ToepenGame.new()
+	game.setup_controlled_round(_p1_wins_fourth_hands(), 0)
+	game.request_knock(0)
+	_all_mee(game)
+	_expect_eq(game.state, ToepenGame.State.NORMAL_PLAY, "all mee returns to play")
+	_expect_eq(game.players[1].penalty_points, 0, "mee does not pay immediately")
+	_expect_eq(game.players[2].penalty_points, 0, "mee p2 does not pay immediately")
+	_expect_eq(game.players[3].penalty_points, 0, "mee p3 does not pay immediately")
+	_expect(game.players[1].is_active_in_round, "mee stays in the round")
+
+
+func _test_second_knock_raises_stake() -> void:
+	var game := ToepenGame.new()
+	game.setup_controlled_round(_p1_wins_fourth_hands(), 0)
+	game.request_knock(0)
+	_all_mee(game)
+	_expect(game.request_knock(0), "same player may knock again before playing")
+	_expect_eq(game.round_stake, 3, "second knock raises stake to 3")
+
+
+func _test_round_end_pays_final_stake() -> void:
+	var game := ToepenGame.new()
+	game.setup_controlled_round(_p1_wins_fourth_hands(), 0)
+	game.request_knock(0)
+	_all_mee(game)
+	_play_out_p1_wins_fourth(game)
+	_expect_eq(game.last_round_winner_id, 1, "p1 still wins the fourth trick")
+	_expect_eq(game.players[1].penalty_points, 0, "winner pays 0 at final stake 2")
+	_expect_eq(game.players[0].penalty_points, 2, "active non-winner pays final stake")
+	_expect_eq(game.players[2].penalty_points, 2, "p2 pays final stake")
+	_expect_eq(game.players[3].penalty_points, 2, "p3 pays final stake")
+
+
+func _test_pass_can_eliminate() -> void:
+	var game := ToepenGame.new()
+	game.setup_controlled_round(_p1_wins_fourth_hands(), 0)
+	game.apply_penalty(1, 13)
+	game.request_knock(0)
+	game.respond_to_knock(1, false)
+	_expect(game.players[1].is_eliminated, "pass to 15 eliminates")
+	_expect_eq(game.players[1].penalty_points, 15, "eliminated passer is at 15")
+
+
+func _test_knock_rejected_off_turn() -> void:
+	var game := ToepenGame.new()
+	game.setup_controlled_round(_p1_wins_fourth_hands(), 0)
+	_expect(not game.can_knock(2), "non-actor cannot knock")
+	_expect(not game.request_knock(2), "knock off-turn is rejected")
+	_expect_eq(game.round_stake, 1, "rejected knock does not raise stake")
+	_expect_eq(game.state, ToepenGame.State.NORMAL_PLAY, "rejected knock stays in play")
+
+
+func _test_all_pass_knocker_wins() -> void:
+	var game := ToepenGame.new()
+	game.setup_controlled_round(_p1_wins_fourth_hands(), 0)
+	game.request_knock(0)
+	game.respond_to_knock(1, false)
+	game.respond_to_knock(2, false)
+	game.respond_to_knock(3, false)
+	_expect_eq(game.state, ToepenGame.State.ROUND_END, "round ends when only knocker remains")
+	_expect_eq(game.last_round_winner_id, 0, "knocker wins if everyone else passes")
+	_expect_eq(game.players[0].penalty_points, 0, "winning knocker gets 0")
+	_expect_eq(game.players[1].penalty_points, 2, "p1 already paid on pass")
+	_expect_eq(game.players[2].penalty_points, 2, "p2 already paid on pass")
+	_expect_eq(game.players[3].penalty_points, 2, "p3 already paid on pass")
+
+
+func _test_placeholder_ai_uses_own_legal_cards() -> void:
+	var game := ToepenGame.new()
+	game.setup_controlled_round(_p1_wins_fourth_hands(), 0)
+	game.play_card(0, game.players[0].hand[0])
+	var ai := PlaceholderAI.new()
+	var chosen := ai.choose_card(game, 1)
+	var legal := game.legal_cards(1)
+	var found := false
+	for card in legal:
+		if card.equals(chosen):
+			found = true
+	_expect(chosen != null, "placeholder AI chooses a card")
+	_expect(found, "placeholder AI chooses a legal card from its own hand")
+	for other_id in [0, 2, 3]:
+		for hidden in game.players[other_id].hand:
+			_expect(not chosen.equals(hidden), "AI card is not taken from player %d" % other_id)
+
+
+func _test_table_session_starts() -> void:
+	var session := TableSession.new()
+	session.start_new_pot()
+	_expect_eq(session.game.players[0].hand.size(), 4, "playable session deals 4 cards")
+	_expect_eq(session.game.state, ToepenGame.State.PRE_ROUND_SPECIALS, "session starts at specials")
+	_expect_eq(session.game.current_specials_actor_id(), 0, "human handles specials first")
+	_expect(session.waiting_for_human(), "session waits for the human to act")

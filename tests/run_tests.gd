@@ -2,6 +2,8 @@ extends SceneTree
 
 func _initialize() -> void:
 	print("=== Toepnacht core tests ===")
-	var tests := CoreTests.new()
-	var failures := tests.run_all()
+	var core := CoreTests.new()
+	var failures := core.run_all()
+	var special := SpecialTests.new()
+	failures += special.run_all()
 	quit(1 if failures > 0 else 0)
