@@ -221,17 +221,20 @@ func _build_layout() -> void:
 
 
 func _on_knock() -> void:
-	session.human_knock()
+	if session.human_knock():
+		_haptic(90, 0.75)
 	_refresh()
 
 
 func _on_mee() -> void:
-	session.human_mee()
+	if session.human_mee():
+		_haptic(45, 0.45)
 	_refresh()
 
 
 func _on_pas() -> void:
-	session.human_pas()
+	if session.human_pas():
+		_haptic(35, 0.3)
 	_refresh()
 
 
@@ -241,8 +244,17 @@ func _on_next_round() -> void:
 
 
 func _play_card(card: Card) -> void:
-	session.human_play(card)
+	if session.human_play(card):
+		_haptic(24, 0.22)
 	_refresh()
+
+
+func _haptic(duration_ms: int, strength: float) -> void:
+	if session == null or session.flow == null:
+		return
+	if not bool(session.flow.campaign.settings.get("haptics_on", true)):
+		return
+	Input.vibrate_handheld(duration_ms, strength)
 
 
 func _refresh() -> void:
