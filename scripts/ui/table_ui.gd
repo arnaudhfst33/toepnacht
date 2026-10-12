@@ -268,6 +268,8 @@ func _refresh() -> void:
 	_rebuild_opponents(game)
 	scores_label.text = _score_line(game)
 	stake_label.text = "Inzet %d" % game.round_stake
+	if game.cards_open:
+		stake_label.text += " · LEERSTAND: OPEN KAARTEN"
 	trick_label.text = _trick_line(game)
 	status_label.text = session.status_text
 	tip_label.text = "TIP · %s" % session.tip_text

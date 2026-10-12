@@ -8,6 +8,7 @@ de Nederlandse regels van Toepen met een studentikoze roguelite-campagne.
 - Vier locaties: Studentenhuis, Kroeg, Huisfeest en Sociëteit
 - Drie potjes per locatie, inclusief eindbaas
 - Zeven optionele tutorials
+- Optionele open-kaartenleerstand voor Studentenhuis potje 1
 - Kloppen, Vuile Was, Witte Was, Toep, Kans op Toep en Armoede
 - De Avondwinkel, bierdopjes en acht eenmalige power-ups
 - Locatiegebonden AI-profielen met een foutmarge
@@ -28,8 +29,8 @@ De precieze spelregels en scope staan in `docs/GDD.md`. Dat document is leidend.
 godot --headless --path . -s res://tests/run_tests.gd
 ```
 
-Het laatste lokaal vastgelegde resultaat is 496 geslaagde tests. Zie
-`tasks/TASK_05_RESULT.md` voor de bijbehorende implementatiestatus.
+De meest recente GitHub Actions-run bevat 505 geslaagde tests. Zie
+`tasks/TASK_06_BEGINNER_TABLE_PRESENTATION.md` voor de bijbehorende status.
 
 Bij iedere push en pull request voert GitHub Actions dezelfde tests uit met
 Godot 4.7.2, gevolgd door een korte rooktest van de hoofdscene.
