@@ -58,52 +58,63 @@ func _build_layout() -> void:
 	UiLayout.fill_rect(bg, 0)
 	add_child(bg)
 
+	var margins := UiLayout.portrait_margins()
+	add_child(margins)
+
 	var root := UiLayout.vbox(6)
-	UiLayout.fill_rect(root, 8)
-	add_child(root)
+	margins.add_child(root)
+
+	var middle := UiLayout.vbox(4)
+	middle.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	middle.clip_contents = true
+	root.add_child(middle)
 
 	title_label = UiLayout.wrap_label()
 	title_label.text = "Toepnacht"
-	root.add_child(title_label)
+	middle.add_child(title_label)
 
 	var hud := UiLayout.hbox(8)
 	scores_label = UiLayout.wrap_label(HORIZONTAL_ALIGNMENT_LEFT)
 	caps_label = UiLayout.wrap_label(HORIZONTAL_ALIGNMENT_RIGHT)
 	hud.add_child(scores_label)
 	hud.add_child(caps_label)
-	root.add_child(hud)
+	middle.add_child(hud)
 
 	opponents_box = UiLayout.vbox(2)
 	opponents_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	root.add_child(opponents_box)
+	middle.add_child(opponents_box)
 
 	stake_label = UiLayout.wrap_label()
-	root.add_child(stake_label)
+	middle.add_child(stake_label)
 
 	trick_label = UiLayout.wrap_label()
 	trick_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(trick_label)
+	middle.add_child(trick_label)
 
 	status_label = UiLayout.wrap_label()
-	root.add_child(status_label)
+	middle.add_child(status_label)
 
 	tip_label = UiLayout.wrap_label()
-	root.add_child(tip_label)
+	middle.add_child(tip_label)
 
 	armoede_label = UiLayout.wrap_label()
-	root.add_child(armoede_label)
+	middle.add_child(armoede_label)
 
 	peek_label = UiLayout.wrap_label()
-	root.add_child(peek_label)
+	middle.add_child(peek_label)
+
+	var bottom := UiLayout.vbox(6)
+	bottom.size_flags_vertical = Control.SIZE_SHRINK_END
+	root.add_child(bottom)
 
 	power_row = UiLayout.hbox(6)
-	root.add_child(power_row)
+	bottom.add_child(power_row)
 
 	huis_row = UiLayout.flow(6)
-	root.add_child(huis_row)
+	bottom.add_child(huis_row)
 
 	var actions := UiLayout.flow(6)
-	root.add_child(actions)
+	bottom.add_child(actions)
 
 	knock_button = Button.new()
 	knock_button.text = "KLOP"
@@ -162,11 +173,12 @@ func _build_layout() -> void:
 
 	var hand_title := UiLayout.wrap_label()
 	hand_title.text = "Jouw hand"
-	root.add_child(hand_title)
+	bottom.add_child(hand_title)
 
 	hand_row = UiLayout.hbox(6)
 	hand_row.size_flags_vertical = Control.SIZE_SHRINK_END
-	root.add_child(hand_row)
+	hand_row.custom_minimum_size.y = 52
+	bottom.add_child(hand_row)
 
 
 func _on_knock() -> void:
@@ -303,7 +315,7 @@ func _rebuild_hand(game: ToepenGame) -> void:
 		var button := Button.new()
 		button.text = UiLayout.compact_card(card)
 		UiLayout.fit_button(button)
-		button.custom_minimum_size = Vector2(0, 44)
+		button.custom_minimum_size = Vector2(0, 52)
 		var is_legal := false
 		for legal_card in legal:
 			if legal_card.equals(card):

@@ -3,6 +3,20 @@ extends RefCounted
 
 ## Shared placeholder layout helpers for the 390×844 portrait viewport.
 
+const EDGE_MARGIN := 8
+const MIN_BOTTOM_SAFE_MARGIN := 28
+
+
+static func bottom_safe_margin() -> int:
+	var win := DisplayServer.window_get_size()
+	var safe := DisplayServer.get_display_safe_area()
+	var inset := 0
+	if win.y > 0:
+		inset = win.y - (safe.position.y + safe.size.y)
+	if inset < 0:
+		inset = 0
+	return maxi(inset, MIN_BOTTOM_SAFE_MARGIN)
+
 
 static func fill_rect(ctrl: Control, margin: float = 12.0) -> void:
 	ctrl.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -12,6 +26,16 @@ static func fill_rect(ctrl: Control, margin: float = 12.0) -> void:
 	ctrl.offset_bottom = -margin
 	ctrl.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	ctrl.grow_vertical = Control.GROW_DIRECTION_BOTH
+
+
+static func portrait_margins() -> MarginContainer:
+	var box := MarginContainer.new()
+	fill_rect(box, 0)
+	box.add_theme_constant_override("margin_left", EDGE_MARGIN)
+	box.add_theme_constant_override("margin_right", EDGE_MARGIN)
+	box.add_theme_constant_override("margin_top", EDGE_MARGIN)
+	box.add_theme_constant_override("margin_bottom", bottom_safe_margin())
+	return box
 
 
 static func wrap_label(align: HorizontalAlignment = HORIZONTAL_ALIGNMENT_CENTER) -> Label:

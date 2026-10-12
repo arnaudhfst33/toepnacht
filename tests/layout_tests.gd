@@ -10,6 +10,7 @@ func run_all() -> int:
 	_passed = 0
 	_test_compact_card()
 	_test_fill_rect_margins()
+	_test_bottom_safe_margin()
 	print("")
 	print("Layout tests: %d passed, %d failed" % [_passed, _failures])
 	return _failures
@@ -37,3 +38,11 @@ func _test_fill_rect_margins() -> void:
 	_expect(is_equal_approx(ctrl.offset_left, 8), "left margin is applied")
 	_expect(is_equal_approx(ctrl.offset_right, -8), "right margin is applied")
 	ctrl.free()
+
+
+func _test_bottom_safe_margin() -> void:
+	_expect(UiLayout.MIN_BOTTOM_SAFE_MARGIN >= 28, "minimum bottom safe-area margin is reserved")
+	_expect(UiLayout.bottom_safe_margin() >= UiLayout.MIN_BOTTOM_SAFE_MARGIN, "bottom safe-area is at least the minimum")
+	var margins := UiLayout.portrait_margins()
+	_expect(margins.get_theme_constant("margin_bottom") >= UiLayout.MIN_BOTTOM_SAFE_MARGIN, "portrait margins keep a bottom safe-area")
+	margins.free()
