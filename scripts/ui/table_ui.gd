@@ -275,6 +275,8 @@ func _refresh() -> void:
 	tip_label.text = "TIP · %s" % session.tip_text
 	tip_label.visible = _tips_enabled() and session.tip_text != ""
 	hand_strength_label.text = CardAdvisor.hand_summary(game.players[0].hand)
+	if CardAdvisor.recommended_card(game) != null and _tips_enabled():
+		hand_strength_label.text += " · gouden rand = advies"
 	hand_strength_label.visible = _tips_enabled()
 	armoede_label.text = _armoede_line(game)
 	_rebuild_power_slots()
@@ -393,11 +395,14 @@ func _rebuild_hand(game: ToepenGame) -> void:
 	var human := game.players[0]
 	var legal := game.legal_cards(0)
 	var human_turn := game.state == ToepenGame.State.NORMAL_PLAY and game.current_actor_id == 0
+	var recommended := CardAdvisor.recommended_card(game) if _tips_enabled() else null
 	for card in human.hand:
 		var button := Button.new()
 		button.text = UiLayout.compact_card(card)
 		UiLayout.fit_button(button)
 		UiLayout.style_card_button(button, card.suit == Card.Suit.HEARTS or card.suit == Card.Suit.DIAMONDS)
+		if recommended != null and recommended.equals(card):
+			UiLayout.highlight_card_button(button)
 		button.custom_minimum_size = Vector2(0, 52)
 		var is_legal := false
 		for legal_card in legal:
@@ -408,6 +413,8 @@ func _rebuild_hand(game: ToepenGame) -> void:
 		if session.power_mode == "ruilen" or session.power_mode == "huis_discard":
 			button.disabled = false
 		var card_tip := CardAdvisor.card_tooltip(card, is_legal)
+		if recommended != null and recommended.equals(card):
+			card_tip = "Aanbevolen. " + card_tip
 		button.tooltip_text = card_tip
 		button.mouse_entered.connect(func() -> void:
 			if _tips_enabled():

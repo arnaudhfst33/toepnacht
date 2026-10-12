@@ -118,3 +118,9 @@ static func style_card_button(button: Button, red_suit: bool) -> void:
 	button.add_theme_stylebox_override("hover", pixel_panel(Color("fff4cc"), Color("e7bd4c")))
 	button.add_theme_stylebox_override("pressed", pixel_panel(Color("dfd1b2"), Color("e7bd4c")))
 	button.add_theme_stylebox_override("disabled", pixel_panel(Color("a89f8d"), Color("5b5660")))
+
+
+static func highlight_card_button(button: Button) -> void:
+	button.add_theme_stylebox_override("normal", pixel_panel(Color("fff2bd"), Color("f2c94c")))
+	button.add_theme_stylebox_override("hover", pixel_panel(Color("fff7d6"), Color("ffe072")))
+	button.add_theme_stylebox_override("pressed", pixel_panel(Color("e7d49a"), Color("f2c94c")))

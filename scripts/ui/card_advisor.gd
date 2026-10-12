@@ -83,6 +83,18 @@ static func turn_tip(game: ToepenGame, player_id: int = ToepenGame.HUMAN_PLAYER_
 	)
 
 
+static func recommended_card(
+	game: ToepenGame,
+	player_id: int = ToepenGame.HUMAN_PLAYER_ID,
+) -> Card:
+	if game.state != ToepenGame.State.NORMAL_PLAY or game.current_actor_id != player_id:
+		return null
+	var legal := game.legal_cards(player_id)
+	if legal.is_empty():
+		return null
+	return _suggest_card(game, legal, game.tricks_completed == 3)
+
+
 static func knock_tip(game: ToepenGame, player_id: int = ToepenGame.HUMAN_PLAYER_ID) -> String:
 	var hand := game.players[player_id].hand
 	var score := hand_score(hand)

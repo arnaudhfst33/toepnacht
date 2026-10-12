@@ -11,6 +11,7 @@ func run_all() -> int:
 	_test_hand_strength_is_explainable()
 	_test_card_tooltip_explains_legality()
 	_test_final_trick_advice()
+	_test_recommended_card_is_legal()
 	_test_studentenhuis_cast()
 	_test_first_campaign_pot_can_use_open_cards()
 	print("")
@@ -62,6 +63,19 @@ func _test_final_trick_advice() -> void:
 	var tip := CardAdvisor.turn_tip(game)
 	_expect(tip.contains("Laatste slag"), "advisor names the decisive fourth trick")
 	_expect(tip.contains("Harten"), "advisor names a concrete legal card")
+
+
+func _test_recommended_card_is_legal() -> void:
+	var game := ToepenGame.new()
+	game.setup_controlled_round(_hands(), 0)
+	var recommendation := CardAdvisor.recommended_card(game)
+	_expect(recommendation != null, "advisor recommends a card on the human turn")
+	var legal := game.legal_cards(0)
+	var is_legal := false
+	for card in legal:
+		if card.equals(recommendation):
+			is_legal = true
+	_expect(is_legal, "recommended card obeys follow-suit rules")
 
 
 func _test_studentenhuis_cast() -> void:
