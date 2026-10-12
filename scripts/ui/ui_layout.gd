@@ -89,3 +89,32 @@ static func fit_button(button: Button) -> void:
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.clip_text = true
 	button.autowrap_mode = TextServer.AUTOWRAP_OFF
+
+
+static func pixel_panel(fill: Color, border: Color = Color("17151c")) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = border
+	style.set_border_width_all(2)
+	style.corner_radius_top_left = 2
+	style.corner_radius_top_right = 2
+	style.corner_radius_bottom_left = 2
+	style.corner_radius_bottom_right = 2
+	style.content_margin_left = 5
+	style.content_margin_right = 5
+	style.content_margin_top = 4
+	style.content_margin_bottom = 4
+	return style
+
+
+static func style_card_button(button: Button, red_suit: bool) -> void:
+	var ink := Color("8f2636") if red_suit else Color("191821")
+	button.add_theme_color_override("font_color", ink)
+	button.add_theme_color_override("font_hover_color", ink)
+	button.add_theme_color_override("font_pressed_color", ink)
+	button.add_theme_color_override("font_disabled_color", Color(ink, 0.38))
+	button.add_theme_font_size_override("font_size", 15)
+	button.add_theme_stylebox_override("normal", pixel_panel(Color("f4ead0")))
+	button.add_theme_stylebox_override("hover", pixel_panel(Color("fff4cc"), Color("e7bd4c")))
+	button.add_theme_stylebox_override("pressed", pixel_panel(Color("dfd1b2"), Color("e7bd4c")))
+	button.add_theme_stylebox_override("disabled", pixel_panel(Color("a89f8d"), Color("5b5660")))

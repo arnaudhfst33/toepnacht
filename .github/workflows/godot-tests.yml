@@ -1,0 +1,40 @@
+name: Godot checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Godot 4.7.2
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: false
+
+      - name: Show Godot version
+        run: godot --version
+
+      - name: Import project
+        run: godot --headless --path . --import --quit
+
+      - name: Run automated tests
+        run: godot --headless --path . -s res://tests/run_tests.gd
+
+      - name: Smoke-test main scene
+        run: godot --headless --path . --quit-after 5
+

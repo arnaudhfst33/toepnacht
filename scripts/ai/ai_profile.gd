@@ -303,7 +303,7 @@ static func _names(location: int, potje: int) -> PackedStringArray:
 			return PackedStringArray(["Senior", "Abactis", "Fiscus"])
 		return PackedStringArray(["Sociëteitslid", "Abactis", "Fiscus"])
 	if potje <= 1:
-		return PackedStringArray(["Eerstejaars", "Huisgenoot", "Oud-lid"])
+		return PackedStringArray(["Feut", "Sjaars", "Huisoudste"])
 	if potje == 2:
 		return PackedStringArray(["Bestuurslid", "Feestcie", "Kotbaas"])
 	return PackedStringArray(["Huisgenoot", "Huisgenoot", "Barploeg"])

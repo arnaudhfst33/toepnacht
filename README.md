@@ -31,6 +31,9 @@ godot --headless --path . -s res://tests/run_tests.gd
 Het laatste lokaal vastgelegde resultaat is 496 geslaagde tests. Zie
 `tasks/TASK_05_RESULT.md` voor de bijbehorende implementatiestatus.
 
+Bij iedere push en pull request voert GitHub Actions dezelfde tests uit met
+Godot 4.7.2, gevolgd door een korte rooktest van de hoofdscene.
+
 ## Ontwikkelafspraken
 
 Lees `AGENTS.md` voordat je code wijzigt. Belangrijke uitgangspunten:

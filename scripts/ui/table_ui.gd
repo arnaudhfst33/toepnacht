@@ -1,12 +1,12 @@
 extends Control
 
-## Minimal placeholder table. No final art or animation.
+## Mobile-first retro table. Gameplay remains in TableSession and core classes.
 
 var session: TableSession
 var status_label: Label
 var stake_label: Label
 var trick_label: Label
-var opponents_box: VBoxContainer
+var opponents_box: HBoxContainer
 var scores_label: Label
 var hand_row: HBoxContainer
 var knock_button: Button
@@ -28,8 +28,12 @@ var power_row: HBoxContainer
 var huis_row: HFlowContainer
 var campaign_button: Button
 var title_label: Label
-var bg_rect: ColorRect
+var bg_rect: RetroTableBackdrop
 var skip_wasdag_button: Button
+var hand_strength_label: Label
+var animation_layer: Control
+var opponent_portraits: Dictionary = {}
+var animation_running: bool = false
 
 
 func _ready() -> void:
@@ -75,8 +79,7 @@ func _ready() -> void:
 
 
 func _build_layout() -> void:
-	bg_rect = ColorRect.new()
-	bg_rect.color = Color(0.12, 0.22, 0.16)
+	bg_rect = RetroTableBackdrop.new()
 	UiLayout.fill_rect(bg_rect, 0)
 	add_child(bg_rect)
 
@@ -102,8 +105,9 @@ func _build_layout() -> void:
 	hud.add_child(caps_label)
 	middle.add_child(hud)
 
-	opponents_box = UiLayout.vbox(2)
+	opponents_box = UiLayout.hbox(5)
 	opponents_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	opponents_box.custom_minimum_size.y = 104
 	middle.add_child(opponents_box)
 
 	stake_label = UiLayout.wrap_label()
@@ -201,10 +205,19 @@ func _build_layout() -> void:
 	hand_title.text = "Jouw hand"
 	bottom.add_child(hand_title)
 
+	hand_strength_label = UiLayout.wrap_label()
+	hand_strength_label.add_theme_font_size_override("font_size", 12)
+	bottom.add_child(hand_strength_label)
+
 	hand_row = UiLayout.hbox(6)
 	hand_row.size_flags_vertical = Control.SIZE_SHRINK_END
 	hand_row.custom_minimum_size.y = 52
 	bottom.add_child(hand_row)
+
+	animation_layer = Control.new()
+	animation_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UiLayout.fill_rect(animation_layer, 0)
+	add_child(animation_layer)
 
 
 func _on_knock() -> void:
@@ -236,7 +249,7 @@ func _refresh() -> void:
 	var game := session.game
 	if session.flow != null:
 		var loc_id := session.flow.campaign.location
-		bg_rect.color = LocationId.placeholder_color(loc_id)
+		bg_rect.set_location(loc_id)
 		var loc := LocationId.display_name(loc_id)
 		var potje := session.flow.campaign.potje
 		title_label.text = "%s\n%s potje %d" % [loc.to_upper(), loc, potje]
@@ -257,7 +270,10 @@ func _refresh() -> void:
 	stake_label.text = "Inzet %d" % game.round_stake
 	trick_label.text = _trick_line(game)
 	status_label.text = session.status_text
-	tip_label.text = session.tip_text
+	tip_label.text = "TIP · %s" % session.tip_text
+	tip_label.visible = _tips_enabled() and session.tip_text != ""
+	hand_strength_label.text = CardAdvisor.hand_summary(game.players[0].hand)
+	hand_strength_label.visible = _tips_enabled()
 	armoede_label.text = _armoede_line(game)
 	_rebuild_power_slots()
 	_rebuild_huis_row()
@@ -295,9 +311,12 @@ func _refresh() -> void:
 		mee_button.visible = false
 		pas_button.visible = false
 		next_round_button.visible = false
+	if not animation_running and not session.presentation_events.is_empty():
+		_play_presentation_events.call_deferred()
 
 
 func _rebuild_opponents(game: ToepenGame) -> void:
+	opponent_portraits.clear()
 	for child in opponents_box.get_children():
 		child.queue_free()
 	for i in range(1, ToepenGame.PLAYER_COUNT):
@@ -305,15 +324,43 @@ func _rebuild_opponents(game: ToepenGame) -> void:
 		var status := "af" if player.is_eliminated else ("%d krt" % player.hand.size())
 		if not player.is_active_in_round and not player.is_eliminated:
 			status += " · pas"
-		var line := "%s  %d/15  %s" % [session.opponent_name(i), player.penalty_points, status]
+		var panel := PanelContainer.new()
+		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		panel.add_theme_stylebox_override("panel", UiLayout.pixel_panel(Color("332b35dd")))
+		opponents_box.add_child(panel)
+		var seat := UiLayout.vbox(1)
+		panel.add_child(seat)
+		var portrait := PixelPortrait.new()
+		var is_active := _active_player_id(game) == i
+		var is_boss := session.flow != null and session.flow.campaign.is_boss_potje() and i == 1
+		portrait.configure(i, is_active, is_boss)
+		seat.add_child(portrait)
+		opponent_portraits[i] = portrait
+		var line := "%s\n%d/15 · %s" % [session.opponent_name(i), player.penalty_points, status]
+		var label := UiLayout.wrap_label()
+		label.add_theme_font_size_override("font_size", 11)
+		label.text = line
+		seat.add_child(label)
 		if game.cards_open and not player.is_eliminated:
 			var cards: PackedStringArray = PackedStringArray()
 			for card in player.hand:
 				cards.append(UiLayout.compact_card(card))
-			line += "\n" + ", ".join(cards)
-		var label := UiLayout.wrap_label()
-		label.text = line
-		opponents_box.add_child(label)
+			var open_cards := UiLayout.wrap_label()
+			open_cards.add_theme_font_size_override("font_size", 9)
+			open_cards.text = " ".join(cards)
+			seat.add_child(open_cards)
+
+
+func _active_player_id(game: ToepenGame) -> int:
+	if game.state == ToepenGame.State.NORMAL_PLAY:
+		return game.current_actor_id
+	if game.state == ToepenGame.State.KNOCK_DECISIONS:
+		return game.current_knock_responder_id()
+	if game.state == ToepenGame.State.VUILE_WAS_CHALLENGE:
+		return game.current_vuile_was_challenger_id()
+	if game.state == ToepenGame.State.PRE_ROUND_SPECIALS:
+		return game.current_specials_actor_id()
+	return -1
 
 
 func _armoede_line(game: ToepenGame) -> String:
@@ -348,6 +395,7 @@ func _rebuild_hand(game: ToepenGame) -> void:
 		var button := Button.new()
 		button.text = UiLayout.compact_card(card)
 		UiLayout.fit_button(button)
+		UiLayout.style_card_button(button, card.suit == Card.Suit.HEARTS or card.suit == Card.Suit.DIAMONDS)
 		button.custom_minimum_size = Vector2(0, 52)
 		var is_legal := false
 		for legal_card in legal:
@@ -357,6 +405,21 @@ func _rebuild_hand(game: ToepenGame) -> void:
 		button.disabled = (not human_turn) or (not is_legal)
 		if session.power_mode == "ruilen" or session.power_mode == "huis_discard":
 			button.disabled = false
+		var card_tip := CardAdvisor.card_tooltip(card, is_legal)
+		button.tooltip_text = card_tip
+		button.mouse_entered.connect(func() -> void:
+			if _tips_enabled():
+				tip_label.text = "KAART · %s" % card_tip
+				tip_label.visible = true
+			_animate_card(button, Vector2(1.04, 1.04))
+		)
+		button.mouse_exited.connect(func() -> void:
+			tip_label.text = "TIP · %s" % session.tip_text
+			tip_label.visible = _tips_enabled() and session.tip_text != ""
+			_animate_card(button, Vector2.ONE)
+		)
+		button.button_down.connect(func() -> void: _animate_card(button, Vector2(0.96, 0.96)))
+		button.button_up.connect(func() -> void: _animate_card(button, Vector2.ONE))
 		var captured := card
 		button.pressed.connect(func() -> void:
 			if session.power_mode == "ruilen":
@@ -369,6 +432,71 @@ func _rebuild_hand(game: ToepenGame) -> void:
 				_play_card(captured)
 		)
 		hand_row.add_child(button)
+
+
+func _animate_card(button: Button, target: Vector2) -> void:
+	button.pivot_offset = button.size * 0.5
+	var duration := 0.08
+	if session.flow != null and str(session.flow.campaign.settings.get("animation_speed", "normal")) == "fast":
+		duration = 0.04
+	var tween := button.create_tween()
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.tween_property(button, "scale", target, duration)
+
+
+func _play_presentation_events() -> void:
+	if animation_running:
+		return
+	animation_running = true
+	var events := session.take_presentation_events()
+	await get_tree().process_frame
+	for event in events:
+		await _animate_play_event(event)
+	animation_running = false
+	if not session.presentation_events.is_empty():
+		_play_presentation_events.call_deferred()
+
+
+func _animate_play_event(event: Dictionary) -> void:
+	var ghost := Label.new()
+	ghost.text = str(event.get("label", "?"))
+	ghost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ghost.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	ghost.custom_minimum_size = Vector2(58, 74)
+	var is_red := bool(event.get("red", false))
+	ghost.add_theme_color_override("font_color", Color("8f2636") if is_red else Color("191821"))
+	ghost.add_theme_font_size_override("font_size", 14)
+	ghost.add_theme_stylebox_override("normal", UiLayout.pixel_panel(Color("f4ead0")))
+	animation_layer.add_child(ghost)
+	var player_id := int(event.get("player_id", 0))
+	var start_global := Vector2(size.x * 0.5 - 29, size.y - 120)
+	if player_id > 0 and opponent_portraits.has(player_id):
+		var portrait: Control = opponent_portraits[player_id]
+		start_global = portrait.global_position + portrait.size * 0.5 - Vector2(29, 37)
+	var end_global := trick_label.global_position + trick_label.size * 0.5 - Vector2(29, 37)
+	ghost.global_position = start_global
+	ghost.scale = Vector2(0.82, 0.82)
+	ghost.modulate.a = 0.0
+	var duration := 0.24
+	if session.flow != null and str(session.flow.campaign.settings.get("animation_speed", "normal")) == "fast":
+		duration = 0.12
+	var tween := ghost.create_tween().set_parallel(true)
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.tween_property(ghost, "global_position", end_global, duration)
+	tween.tween_property(ghost, "scale", Vector2.ONE, duration)
+	tween.tween_property(ghost, "modulate:a", 1.0, minf(duration, 0.1))
+	await tween.finished
+	var pause := 0.09 if duration > 0.2 else 0.04
+	await get_tree().create_timer(pause).timeout
+	ghost.queue_free()
+
+
+func _tips_enabled() -> bool:
+	if session == null or session.flow == null:
+		return true
+	return bool(session.flow.campaign.settings.get("tips_on", true))
 
 
 func _rebuild_power_slots() -> void:

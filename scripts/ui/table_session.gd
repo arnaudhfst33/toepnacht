@@ -16,6 +16,7 @@ var last_after_pot: int = CampaignFlow.AfterPot.NONE
 var power_mode: String = ""
 var pending_wasdag_choice: bool = false
 var pending_was_challenger_id: int = -1
+var presentation_events: Array[Dictionary] = []
 
 
 func _init() -> void:
@@ -171,6 +172,7 @@ func human_play(card: Card) -> bool:
 	var err := game.play_card(ToepenGame.HUMAN_PLAYER_ID, card)
 	if err != ToepenGame.PlayError.NONE:
 		return false
+	_queue_card_event(ToepenGame.HUMAN_PLAYER_ID, card)
 	status_text = "Jij speelt %s." % str(card)
 	resolve_ai()
 	return true
@@ -259,7 +261,7 @@ func resolve_ai() -> void:
 	var guard := 0
 	while guard < 500:
 		guard += 1
-		tip_text = tutorial.tip_for(game)
+		_update_tip()
 		if game.state == ToepenGame.State.GAME_END:
 			status_text = "Pot gedaan. Winnaar: %s." % _name(game.pot_winner_id)
 			_handle_pot_end()
@@ -288,6 +290,14 @@ func resolve_ai() -> void:
 				status_text = "Je Was-claim wordt betwist. Wasdag nu, of laat de betwisting doorgaan."
 				return
 		_apply_ai(actor)
+
+
+func _update_tip() -> void:
+	var tutorial_tip := tutorial.tip_for(game)
+	if tutorial_tip != "":
+		tip_text = tutorial_tip
+	else:
+		tip_text = CardAdvisor.turn_tip(game)
 
 
 func _current_ai_actor() -> int:
@@ -345,7 +355,8 @@ func _apply_ai(player_id: int) -> void:
 		"play":
 			var card: Card = action.get("card")
 			if card != null:
-				game.play_card(player_id, card)
+				if game.play_card(player_id, card) == ToepenGame.PlayError.NONE:
+					_queue_card_event(player_id, card)
 		_:
 			if game.state == ToepenGame.State.KNOCK_DECISIONS:
 				game.respond_to_knock(player_id, true)
@@ -354,7 +365,24 @@ func _apply_ai(player_id: int) -> void:
 			elif game.state == ToepenGame.State.NORMAL_PLAY:
 				var legal := game.legal_cards(player_id)
 				if legal.size() > 0:
-					game.play_card(player_id, legal[0])
+					var fallback: Card = legal[0]
+					if game.play_card(player_id, fallback) == ToepenGame.PlayError.NONE:
+						_queue_card_event(player_id, fallback)
+
+
+func _queue_card_event(player_id: int, card: Card) -> void:
+	presentation_events.append({
+		"player_id": player_id,
+		"label": UiLayout.compact_card(card),
+		"red": card.suit == Card.Suit.HEARTS or card.suit == Card.Suit.DIAMONDS,
+	})
+
+
+func take_presentation_events() -> Array[Dictionary]:
+	var events: Array[Dictionary] = []
+	events.assign(presentation_events)
+	presentation_events.clear()
+	return events
 
 
 func _ai_for(player_id: int) -> BaselineAI:
