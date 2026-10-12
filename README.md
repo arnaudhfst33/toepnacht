@@ -29,7 +29,7 @@ De precieze spelregels en scope staan in `docs/GDD.md`. Dat document is leidend.
 godot --headless --path . -s res://tests/run_tests.gd
 ```
 
-De meest recente GitHub Actions-run bevat 505 geslaagde tests. Zie
+De meest recente GitHub Actions-run bevat 507 geslaagde tests. Zie
 `tasks/TASK_06_BEGINNER_TABLE_PRESENTATION.md` voor de bijbehorende status.
 
 Bij iedere push en pull request voert GitHub Actions dezelfde tests uit met

@@ -15,13 +15,14 @@ spelregels of campagneflow te veranderen.
 - Gespeelde kaarten bewegen vanuit de betreffende speler naar de tafel.
 - De hand krijgt een eenvoudige sterktescore met uitleg.
 - De tip benoemt een concrete legale kaart en legt de reden uit.
+- De geadviseerde kaart krijgt op mobiel een rustige gouden rand.
 - Bij een klop verschijnt contextueel advies over MEE of PAS.
 - Kaartuitleg verschijnt bij hover; ongeldige kaarten leggen kleur bekennen uit.
 - Alle leerhulp volgt de bestaande instelling `tips_on`.
 - Studentenhuis potje 1 kan als leerstand met open kaarten worden gespeeld.
 - Open kaarten zijn afzonderlijk uit te zetten in Instellingen.
 - Animaties zijn instelbaar op rustig of snel.
-- Zes nieuwe regressietests controleren advies, cast en de open-kaartenoptie.
+- Acht nieuwe regressietests controleren advies, cast en de open-kaartenoptie.
 - GitHub Actions voert voortaan Godot 4.7.2-tests en een rooktest uit.
 
 ## Bewuste beperkingen
@@ -36,6 +37,6 @@ spelregels of campagneflow te veranderen.
 - Alle GDScript-bestanden zijn succesvol geparset met `gdparse`.
 - De vier nieuwe scripts/tests zijn lint-schoon.
 - GitHub Actions draait met Godot 4.7.2.
-- 505 geautomatiseerde tests slagen; er zijn 0 testfouten.
+- 507 geautomatiseerde tests slagen; er zijn 0 testfouten.
 - De headless rooktest van de hoofdscene slaagt.
 
