@@ -23,6 +23,13 @@ De precieze spelregels en scope staan in `docs/GDD.md`. Dat document is leidend.
 2. Importeer `project.godot` vanuit de Godot Project Manager.
 3. Start het project met F6/F5.
 
+## Testen op iPhone zonder Mac
+
+Bij iedere push bouwt GitHub Actions ook een mobiele webversie. Deze export is
+een Progressive Web App: open de Pages-link in Safari en kies daarna
+`Deel > Zet op beginscherm`. Dezelfde Godot-code kan later via Xcode als echte
+iOS-app worden ondertekend.
+
 ## Tests uitvoeren
 
 ```text
