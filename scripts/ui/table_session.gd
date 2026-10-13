@@ -389,6 +389,8 @@ func _apply_ai(player_id: int) -> void:
 func _queue_card_event(player_id: int, card: Card) -> void:
 	presentation_events.append({
 		"player_id": player_id,
+		"player_name": _name(player_id),
+		"card": card,
 		"label": UiLayout.compact_card(card),
 		"red": card.suit == Card.Suit.HEARTS or card.suit == Card.Suit.DIAMONDS,
 	})

@@ -211,7 +211,7 @@ func _build_layout() -> void:
 
 	hand_row = UiLayout.hbox(6)
 	hand_row.size_flags_vertical = Control.SIZE_SHRINK_END
-	hand_row.custom_minimum_size.y = 52
+	hand_row.custom_minimum_size.y = 92
 	bottom.add_child(hand_row)
 
 	animation_layer = Control.new()
@@ -423,12 +423,10 @@ func _rebuild_hand(game: ToepenGame) -> void:
 	var recommended := CardAdvisor.recommended_card(game) if _tips_enabled() else null
 	for card in human.hand:
 		var button := Button.new()
-		button.text = UiLayout.compact_card(card)
+		button.text = ""
 		UiLayout.fit_button(button)
-		UiLayout.style_card_button(button, card.suit == Card.Suit.HEARTS or card.suit == Card.Suit.DIAMONDS)
-		if recommended != null and recommended.equals(card):
-			UiLayout.highlight_card_button(button)
-		button.custom_minimum_size = Vector2(0, 52)
+		button.flat = true
+		button.custom_minimum_size = Vector2(0, 88)
 		var is_legal := false
 		for legal_card in legal:
 			if legal_card.equals(card):
@@ -437,6 +435,11 @@ func _rebuild_hand(game: ToepenGame) -> void:
 		button.disabled = (not human_turn) or (not is_legal)
 		if session.power_mode == "ruilen" or session.power_mode == "huis_discard":
 			button.disabled = false
+		var face := PlayingCardFace.new()
+		face.set_anchors_preset(Control.PRESET_FULL_RECT)
+		face.configure(card, recommended != null and recommended.equals(card))
+		face.modulate = Color(1, 1, 1, 0.42) if button.disabled else Color.WHITE
+		button.add_child(face)
 		var card_tip := CardAdvisor.card_tooltip(card, is_legal)
 		if recommended != null and recommended.equals(card):
 			card_tip = "Aanbevolen. " + card_tip
@@ -470,9 +473,9 @@ func _rebuild_hand(game: ToepenGame) -> void:
 
 func _animate_card(button: Button, target: Vector2) -> void:
 	button.pivot_offset = button.size * 0.5
-	var duration := 0.08
+	var duration := 0.14
 	if session.flow != null and str(session.flow.campaign.settings.get("animation_speed", "normal")) == "fast":
-		duration = 0.04
+		duration = 0.07
 	var tween := button.create_tween()
 	tween.set_trans(Tween.TRANS_QUAD)
 	tween.set_ease(Tween.EASE_OUT)
@@ -483,47 +486,53 @@ func _play_presentation_events() -> void:
 	if animation_running:
 		return
 	animation_running = true
+	animation_layer.mouse_filter = Control.MOUSE_FILTER_STOP
 	var events := session.take_presentation_events()
 	await get_tree().process_frame
 	for event in events:
 		await _animate_play_event(event)
 	animation_running = false
+	animation_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_refresh()
 	if not session.presentation_events.is_empty():
 		_play_presentation_events.call_deferred()
 
 
 func _animate_play_event(event: Dictionary) -> void:
 	_sfx("card")
-	var ghost := Label.new()
-	ghost.text = str(event.get("label", "?"))
-	ghost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	ghost.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	ghost.custom_minimum_size = Vector2(58, 74)
-	var is_red := bool(event.get("red", false))
-	ghost.add_theme_color_override("font_color", Color("8f2636") if is_red else Color("191821"))
-	ghost.add_theme_font_size_override("font_size", 14)
-	ghost.add_theme_stylebox_override("normal", UiLayout.pixel_panel(Color("f4ead0")))
+	var ghost := PlayingCardFace.new()
+	ghost.custom_minimum_size = Vector2(64, 86)
+	ghost.size = Vector2(64, 86)
+	var played_card: Card = event.get("card")
+	ghost.configure(played_card)
 	animation_layer.add_child(ghost)
+	status_label.text = "%s speelt %s" % [str(event.get("player_name", "Speler")), str(played_card)]
 	var player_id := int(event.get("player_id", 0))
-	var start_global := Vector2(size.x * 0.5 - 29, size.y - 120)
+	var start_global := Vector2(size.x * 0.5 - 32, size.y - 130)
 	if player_id > 0 and opponent_portraits.has(player_id):
 		var portrait: Control = opponent_portraits[player_id]
-		start_global = portrait.global_position + portrait.size * 0.5 - Vector2(29, 37)
-	var end_global := trick_label.global_position + trick_label.size * 0.5 - Vector2(29, 37)
+		start_global = portrait.global_position + portrait.size * 0.5 - Vector2(32, 43)
+	var end_global := trick_label.global_position + trick_label.size * 0.5 - Vector2(32, 43)
 	ghost.global_position = start_global
-	ghost.scale = Vector2(0.82, 0.82)
+	ghost.scale = Vector2(0.72, 0.72)
+	ghost.rotation = -0.12 if player_id % 2 == 0 else 0.12
 	ghost.modulate.a = 0.0
-	var duration := 0.24
+	var duration := 0.52
 	if session.flow != null and str(session.flow.campaign.settings.get("animation_speed", "normal")) == "fast":
-		duration = 0.12
+		duration = 0.24
 	var tween := ghost.create_tween().set_parallel(true)
-	tween.set_trans(Tween.TRANS_QUAD)
+	tween.set_trans(Tween.TRANS_BACK)
 	tween.set_ease(Tween.EASE_OUT)
 	tween.tween_property(ghost, "global_position", end_global, duration)
 	tween.tween_property(ghost, "scale", Vector2.ONE, duration)
+	tween.tween_property(ghost, "rotation", 0.0, duration)
 	tween.tween_property(ghost, "modulate:a", 1.0, minf(duration, 0.1))
 	await tween.finished
-	var pause := 0.09 if duration > 0.2 else 0.04
+	var settle := ghost.create_tween()
+	settle.tween_property(ghost, "scale", Vector2(1.06, 0.96), 0.08)
+	settle.tween_property(ghost, "scale", Vector2.ONE, 0.1)
+	await settle.finished
+	var pause := 0.34 if duration > 0.3 else 0.12
 	await get_tree().create_timer(pause).timeout
 	ghost.queue_free()
 

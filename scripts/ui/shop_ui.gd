@@ -38,9 +38,16 @@ func _build() -> void:
 	root.add_child(caps_label)
 	slots_label = UiLayout.wrap_label()
 	root.add_child(slots_label)
+	var help := UiLayout.wrap_label()
+	help.text = "Kies slim · je kunt maximaal 2 power-ups bewaren"
+	help.modulate = Color("d9c98f")
+	root.add_child(help)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(scroll)
 	offer_row = UiLayout.vbox(10)
 	offer_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(offer_row)
+	scroll.add_child(offer_row)
 	var verder := Button.new()
 	verder.text = "VERDER"
 	UiLayout.fit_button(verder)
@@ -65,12 +72,26 @@ func _refresh() -> void:
 		return
 	for i in run.shop.offerings.size():
 		var id := str(run.shop.offerings[i])
-		var card := UiLayout.vbox(4)
+		var panel := PanelContainer.new()
+		panel.add_theme_stylebox_override("panel", UiLayout.pixel_panel(Color("29202ddd"), Color("d6aa4c")))
+		offer_row.add_child(panel)
+		var card := UiLayout.vbox(5)
+		panel.add_child(card)
 		var info := UiLayout.wrap_label(HORIZONTAL_ALIGNMENT_LEFT)
-		info.text = "%s\n%d dopjes" % [PowerUpCatalog.display_name(id), PowerUpCatalog.cost(id)]
+		info.text = "%s  ·  %d DOPJES" % [PowerUpCatalog.display_name(id).to_upper(), PowerUpCatalog.cost(id)]
+		info.add_theme_color_override("font_color", Color("f2d477"))
 		card.add_child(info)
+		var effect := UiLayout.wrap_label(HORIZONTAL_ALIGNMENT_LEFT)
+		effect.text = PowerUpCatalog.description(id)
+		effect.add_theme_font_size_override("font_size", 13)
+		card.add_child(effect)
+		var timing := UiLayout.wrap_label(HORIZONTAL_ALIGNMENT_LEFT)
+		timing.text = PowerUpCatalog.timing(id)
+		timing.add_theme_font_size_override("font_size", 11)
+		timing.modulate = Color("b8d7cf")
+		card.add_child(timing)
 		var buy := Button.new()
-		buy.text = "KOOP"
+		buy.text = "KOOP · %d DOPJES" % PowerUpCatalog.cost(id)
 		UiLayout.fit_button(buy)
 		buy.custom_minimum_size = Vector2(0, 36)
 		var idx := i
@@ -79,8 +100,17 @@ func _refresh() -> void:
 			_refresh()
 		)
 		buy.disabled = (not run.has_inventory_slot()) or run.beer_caps < PowerUpCatalog.cost(id)
+		if not run.has_inventory_slot():
+			buy.text = "SLOTS VOL"
+		elif run.beer_caps < PowerUpCatalog.cost(id):
+			buy.text = "TE WEINIG DOPJES"
 		card.add_child(buy)
-		offer_row.add_child(card)
+		panel.modulate.a = 0.0
+		panel.position.x = 24.0
+		var delay := float(i) * 0.08
+		var tween := panel.create_tween().set_parallel(true)
+		tween.tween_property(panel, "modulate:a", 1.0, 0.28).set_delay(delay)
+		tween.tween_property(panel, "position:x", 0.0, 0.32).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func _on_verder() -> void:

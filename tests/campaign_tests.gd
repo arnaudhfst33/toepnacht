@@ -23,6 +23,7 @@ func run_all() -> int:
 	_test_no_duplicate_round_reward()
 	_test_loss_clears_beer_caps()
 	_test_shop_three_offerings()
+	_test_shop_descriptions()
 	_test_shop_prices_and_slots()
 	_test_shop_visit_does_not_reroll()
 	_test_kaartje_ruilen()
@@ -258,6 +259,12 @@ func _test_shop_three_offerings() -> void:
 	_expect_eq(flow.campaign.shop.offerings.size(), 3, "shop shows exactly 3 offerings")
 	for id in flow.campaign.shop.offerings:
 		_expect(PowerUpCatalog.is_implemented(str(id)), "shop offering is implemented")
+
+
+func _test_shop_descriptions() -> void:
+	for id in PowerUpId.all_ids():
+		_expect(PowerUpCatalog.description(id).length() >= 20, "%s has a clear shop effect" % id)
+		_expect(PowerUpCatalog.timing(id).length() >= 15, "%s explains when it can be used" % id)
 
 
 func _test_shop_prices_and_slots() -> void:
