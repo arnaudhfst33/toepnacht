@@ -365,6 +365,9 @@ func _apply_ai(player_id: int) -> void:
 		"pas":
 			game.respond_to_knock(player_id, false)
 			status_text = "%s past." % _name(player_id)
+		"mee":
+			game.respond_to_knock(player_id, true)
+			status_text = "%s gaat mee." % _name(player_id)
 		"play":
 			var card: Card = action.get("card")
 			if card != null:

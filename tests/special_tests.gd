@@ -24,6 +24,7 @@ func run_all() -> int:
 	_test_previous_winner_lead()
 	_test_pas_only_on_knock()
 	_test_pas_blocked_after_play()
+	_test_ai_must_mee_after_playing()
 	_test_ai_legal_cards()
 	_test_ai_view_hides_hidden_cards()
 	_test_tutorial_blanco_state()
@@ -444,6 +445,27 @@ func _test_pas_blocked_after_play() -> void:
 	_expect(not game.can_pass(0), "p0 cannot pas after already playing this trick")
 	_expect(not game.respond_to_knock(0, false), "pas after playing is rejected")
 	_expect(game.respond_to_knock(0, true), "p0 may still mee")
+
+
+func _test_ai_must_mee_after_playing() -> void:
+	var game := ToepenGame.new()
+	game.setup_controlled_round(_four_play_hands(), 0)
+	game.play_card(0, game.players[0].hand[0])
+	game.play_card(1, game.players[1].hand[0])
+	_expect(game.request_knock(2), "AI may knock after earlier players have played")
+	game.respond_to_knock(3, true)
+	game.respond_to_knock(0, true)
+	var view := PublicView.from_game(game, 1)
+	_expect(view.must_respond_to_knock, "public view marks current knock responder")
+	_expect(not view.can_pass, "responder that already played cannot pass")
+	var ai := BaselineAI.new()
+	var action := ai.decide(view, game.rng)
+	_expect_eq(str(action.get("type", "")), "mee", "AI chooses mandatory mee instead of an illegal card play")
+	var session := TableSession.new()
+	session.game = game
+	session._apply_ai(1)
+	_expect_eq(game.state, ToepenGame.State.NORMAL_PLAY, "mandatory AI mee resumes normal play")
+	_expect_eq(game.current_actor_id, 2, "the knocker can play after all responses")
 
 
 func _test_ai_legal_cards() -> void:

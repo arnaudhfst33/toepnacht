@@ -31,12 +31,12 @@ func decide(view: PublicView, rng: RandomNumberGenerator) -> Dictionary:
 		return {"type": "decline_challenge"}
 	if view.can_skip_specials:
 		return {"type": "skip_specials"}
+	if view.must_respond_to_knock:
+		if view.can_pass and not _want_mee(view, rng):
+			return {"type": "pas"}
+		return {"type": "mee"}
 	if view.can_knock and _want_knock(view, rng):
 		return {"type": "knock"}
-	if view.can_pass or (view.round_stake > 1 and view.can_pass == false and false):
-		pass
-	if view.can_pass and not _want_mee(view, rng):
-		return {"type": "pas"}
 	if view.legal_cards.size() > 0:
 		return {"type": "play", "card": _choose_card(view, rng)}
 	return {"type": "wait"}

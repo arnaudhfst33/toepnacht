@@ -16,6 +16,7 @@ var round_stake: int = 1
 var tricks_completed: int = 0
 var can_knock: bool = false
 var can_pass: bool = false
+var must_respond_to_knock: bool = false
 var can_declare_toep: bool = false
 var can_use_kans: bool = false
 var can_call_vuile_was: bool = false
@@ -53,6 +54,7 @@ static func from_game(game: ToepenGame, player_id: int) -> PublicView:
 	view.tricks_completed = game.tricks_completed
 	view.can_knock = game.can_knock(player_id)
 	view.can_pass = game.can_pass(player_id)
+	view.must_respond_to_knock = game.current_knock_responder_id() == player_id
 	view.can_declare_toep = game.can_declare_toep(player_id)
 	view.can_use_kans = game.can_use_kans(player_id)
 	view.can_call_vuile_was = game.can_call_vuile_was(player_id)
