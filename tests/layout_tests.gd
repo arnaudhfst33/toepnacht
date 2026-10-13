@@ -12,6 +12,7 @@ func run_all() -> int:
 	_test_fill_rect_margins()
 	_test_bottom_safe_margin()
 	_test_visual_playing_card()
+	_test_retro_trick_table_seats()
 	_test_new_placeholder_screens()
 	print("")
 	print("Layout tests: %d passed, %d failed" % [_passed, _failures])
@@ -57,6 +58,18 @@ func _test_visual_playing_card() -> void:
 	_expect(face.card.equals(card), "visual card keeps the played card")
 	_expect(face.recommended, "visual card supports the advice highlight")
 	face.free()
+
+
+func _test_retro_trick_table_seats() -> void:
+	var table := RetroTrickTable.new()
+	table.size = Vector2(360, 245)
+	var human := table.card_target_global(0)
+	var left := table.card_target_global(1)
+	var top := table.card_target_global(2)
+	var right := table.card_target_global(3)
+	_expect(human.y > top.y, "human played card is positioned at the bottom seat")
+	_expect(left.x < top.x and right.x > top.x, "opponent cards are positioned left, top and right")
+	table.free()
 
 
 func _test_new_placeholder_screens() -> void:

@@ -6,8 +6,7 @@ var session: TableSession
 var status_label: Label
 var stake_label: Label
 var trick_label: Label
-var trick_cards_row: HBoxContainer
-var opponents_box: HBoxContainer
+var trick_table: RetroTrickTable
 var scores_label: Label
 var hand_row: HBoxContainer
 var knock_button: Button
@@ -106,21 +105,16 @@ func _build_layout() -> void:
 	hud.add_child(caps_label)
 	middle.add_child(hud)
 
-	opponents_box = UiLayout.hbox(5)
-	opponents_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	opponents_box.custom_minimum_size.y = 104
-	middle.add_child(opponents_box)
-
 	stake_label = UiLayout.wrap_label()
 	middle.add_child(stake_label)
 
 	trick_label = UiLayout.wrap_label()
 	middle.add_child(trick_label)
 
-	trick_cards_row = UiLayout.hbox(5)
-	trick_cards_row.custom_minimum_size.y = 88
-	trick_cards_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	middle.add_child(trick_cards_row)
+	trick_table = RetroTrickTable.new()
+	trick_table.custom_minimum_size.y = 245
+	trick_table.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	middle.add_child(trick_table)
 
 	status_label = UiLayout.wrap_label()
 	middle.add_child(status_label)
@@ -295,13 +289,12 @@ func _refresh() -> void:
 		peek_label.text = ""
 		if session.tutorial.kind != TutorialDirector.Kind.NONE:
 			title_label.text = session.tutorial.title
-	_rebuild_opponents(game)
+	_rebuild_table(game)
 	scores_label.text = _score_line(game)
 	stake_label.text = "Inzet %d" % game.round_stake
 	if game.cards_open:
 		stake_label.text += " · LEERSTAND: OPEN KAARTEN"
 	trick_label.text = _trick_title(game)
-	_rebuild_trick_cards()
 	status_label.text = session.status_text
 	tip_label.text = "TIP · %s" % session.tip_text
 	tip_label.visible = _tips_enabled() and session.tip_text != ""
@@ -350,52 +343,14 @@ func _refresh() -> void:
 		_play_presentation_events.call_deferred()
 
 
-func _rebuild_opponents(game: ToepenGame) -> void:
-	opponent_portraits.clear()
-	for child in opponents_box.get_children():
-		child.queue_free()
-	for i in range(1, ToepenGame.PLAYER_COUNT):
-		var player := game.players[i]
-		var status := "af" if player.is_eliminated else ("%d krt" % player.hand.size())
-		if not player.is_active_in_round and not player.is_eliminated:
-			status += " · pas"
-		var panel := PanelContainer.new()
-		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		panel.add_theme_stylebox_override("panel", UiLayout.pixel_panel(Color("332b35dd")))
-		opponents_box.add_child(panel)
-		var seat := UiLayout.vbox(1)
-		panel.add_child(seat)
-		var portrait := PixelPortrait.new()
-		var is_active := _active_player_id(game) == i
-		var is_boss := session.flow != null and session.flow.campaign.is_boss_potje() and i == 1
-		portrait.configure(i, is_active, is_boss)
-		seat.add_child(portrait)
-		opponent_portraits[i] = portrait
-		var line := "%s\n%d/15 · %s" % [session.opponent_name(i), player.penalty_points, status]
-		var label := UiLayout.wrap_label()
-		label.add_theme_font_size_override("font_size", 11)
-		label.text = line
-		seat.add_child(label)
-		if game.cards_open and not player.is_eliminated:
-			var cards: PackedStringArray = PackedStringArray()
-			for card in player.hand:
-				cards.append(UiLayout.compact_card(card))
-			var open_cards := UiLayout.wrap_label()
-			open_cards.add_theme_font_size_override("font_size", 9)
-			open_cards.text = " ".join(cards)
-			seat.add_child(open_cards)
-
-
-func _active_player_id(game: ToepenGame) -> int:
-	if game.state == ToepenGame.State.NORMAL_PLAY:
-		return game.current_actor_id
-	if game.state == ToepenGame.State.KNOCK_DECISIONS:
-		return game.current_knock_responder_id()
-	if game.state == ToepenGame.State.VUILE_WAS_CHALLENGE:
-		return game.current_vuile_was_challenger_id()
-	if game.state == ToepenGame.State.PRE_ROUND_SPECIALS:
-		return game.current_specials_actor_id()
-	return -1
+func _rebuild_table(game: ToepenGame) -> void:
+	var location := LocationId.STUDENTENHUIS
+	var is_boss := false
+	if session.flow != null:
+		location = session.flow.campaign.location
+		is_boss = session.flow.campaign.is_boss_potje()
+	trick_table.configure(game, session.visual_trick_cards, session.opponent_names, is_boss, location)
+	opponent_portraits = trick_table.portraits
 
 
 func _armoede_line(game: ToepenGame) -> String:
@@ -417,34 +372,6 @@ func _trick_title(game: ToepenGame) -> String:
 		shown_trick += 1
 	shown_trick = clampi(shown_trick, 1, ToepenGame.TRICKS_PER_ROUND)
 	return "TAFEL · SLAG %d VAN %d" % [shown_trick, ToepenGame.TRICKS_PER_ROUND]
-
-
-func _rebuild_trick_cards() -> void:
-	for child in trick_cards_row.get_children():
-		child.queue_free()
-	if session.visual_trick_cards.is_empty():
-		for _slot in 4:
-			var empty := PanelContainer.new()
-			empty.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			empty.custom_minimum_size = Vector2(0, 70)
-			empty.add_theme_stylebox_override("panel", UiLayout.pixel_panel(Color("17151c44"), Color("d9c37444")))
-			trick_cards_row.add_child(empty)
-		return
-	for event in session.visual_trick_cards:
-		var slot := UiLayout.vbox(1)
-		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var name := UiLayout.wrap_label()
-		name.text = str(event.get("player_name", "Speler"))
-		name.add_theme_font_size_override("font_size", 9)
-		name.clip_text = true
-		slot.add_child(name)
-		var face := PlayingCardFace.new()
-		face.custom_minimum_size = Vector2(0, 68)
-		face.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		face.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		face.configure(event.get("card"))
-		slot.add_child(face)
-		trick_cards_row.add_child(slot)
 
 
 func _rebuild_hand(game: ToepenGame) -> void:
@@ -545,7 +472,7 @@ func _animate_play_event(event: Dictionary) -> void:
 	if player_id > 0 and opponent_portraits.has(player_id):
 		var portrait: Control = opponent_portraits[player_id]
 		start_global = portrait.global_position + portrait.size * 0.5 - Vector2(32, 43)
-	var end_global := trick_cards_row.global_position + trick_cards_row.size * 0.5 - Vector2(32, 43)
+	var end_global := trick_table.card_target_global(player_id)
 	ghost.global_position = start_global
 	ghost.scale = Vector2(0.72, 0.72)
 	ghost.rotation = -0.12 if player_id % 2 == 0 else 0.12
