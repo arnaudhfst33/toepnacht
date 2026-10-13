@@ -25,6 +25,7 @@ func run_all() -> int:
 	_test_pas_only_on_knock()
 	_test_pas_blocked_after_play()
 	_test_ai_must_mee_after_playing()
+	_test_visual_trick_stays_until_next_trick()
 	_test_ai_legal_cards()
 	_test_ai_view_hides_hidden_cards()
 	_test_tutorial_blanco_state()
@@ -466,6 +467,24 @@ func _test_ai_must_mee_after_playing() -> void:
 	session._apply_ai(1)
 	_expect_eq(game.state, ToepenGame.State.NORMAL_PLAY, "mandatory AI mee resumes normal play")
 	_expect_eq(game.current_actor_id, 2, "the knocker can play after all responses")
+
+
+func _test_visual_trick_stays_until_next_trick() -> void:
+	var session := TableSession.new()
+	var game := ToepenGame.new()
+	game.setup_controlled_round(_four_play_hands(), 0)
+	session.game = game
+	for _play in 4:
+		var actor := game.current_actor_id
+		var card: Card = game.legal_cards(actor)[0]
+		game.play_card(actor, card)
+		session._queue_card_event(actor, card)
+	_expect_eq(session.visual_trick_cards.size(), 4, "completed trick remains visually on the table")
+	var next_actor := game.current_actor_id
+	var next_card: Card = game.legal_cards(next_actor)[0]
+	game.play_card(next_actor, next_card)
+	session._queue_card_event(next_actor, next_card)
+	_expect_eq(session.visual_trick_cards.size(), 1, "first card of next trick clears the previous visual trick")
 
 
 func _test_ai_legal_cards() -> void:

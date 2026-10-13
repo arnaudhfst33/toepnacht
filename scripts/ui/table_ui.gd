@@ -6,6 +6,7 @@ var session: TableSession
 var status_label: Label
 var stake_label: Label
 var trick_label: Label
+var trick_cards_row: HBoxContainer
 var opponents_box: HBoxContainer
 var scores_label: Label
 var hand_row: HBoxContainer
@@ -114,8 +115,12 @@ func _build_layout() -> void:
 	middle.add_child(stake_label)
 
 	trick_label = UiLayout.wrap_label()
-	trick_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	middle.add_child(trick_label)
+
+	trick_cards_row = UiLayout.hbox(5)
+	trick_cards_row.custom_minimum_size.y = 88
+	trick_cards_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	middle.add_child(trick_cards_row)
 
 	status_label = UiLayout.wrap_label()
 	middle.add_child(status_label)
@@ -295,7 +300,8 @@ func _refresh() -> void:
 	stake_label.text = "Inzet %d" % game.round_stake
 	if game.cards_open:
 		stake_label.text += " · LEERSTAND: OPEN KAARTEN"
-	trick_label.text = _trick_line(game)
+	trick_label.text = _trick_title(game)
+	_rebuild_trick_cards()
 	status_label.text = session.status_text
 	tip_label.text = "TIP · %s" % session.tip_text
 	tip_label.visible = _tips_enabled() and session.tip_text != ""
@@ -403,15 +409,42 @@ func _score_line(game: ToepenGame) -> String:
 	return "Jij %d/15" % game.players[0].penalty_points
 
 
-func _trick_line(game: ToepenGame) -> String:
-	if game.current_trick == null or game.current_trick.play_count() == 0:
-		return "Tafel: leeg"
-	var parts: PackedStringArray = PackedStringArray()
-	for i in game.current_trick.play_count():
-		var pid: int = game.current_trick.player_ids[i]
-		var pname := "Jij" if pid == 0 else session.opponent_name(pid)
-		parts.append("%s: %s" % [pname, UiLayout.compact_card(game.current_trick.cards[i])])
-	return "Tafel:\n" + "\n".join(parts)
+func _trick_title(game: ToepenGame) -> String:
+	if session.visual_trick_cards.is_empty():
+		return "TAFEL · wacht op de eerste kaart"
+	var shown_trick := game.tricks_completed
+	if game.current_trick != null and game.current_trick.play_count() > 0 and game.state != ToepenGame.State.ROUND_END:
+		shown_trick += 1
+	shown_trick = clampi(shown_trick, 1, ToepenGame.TRICKS_PER_ROUND)
+	return "TAFEL · SLAG %d VAN %d" % [shown_trick, ToepenGame.TRICKS_PER_ROUND]
+
+
+func _rebuild_trick_cards() -> void:
+	for child in trick_cards_row.get_children():
+		child.queue_free()
+	if session.visual_trick_cards.is_empty():
+		for _slot in 4:
+			var empty := PanelContainer.new()
+			empty.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			empty.custom_minimum_size = Vector2(0, 70)
+			empty.add_theme_stylebox_override("panel", UiLayout.pixel_panel(Color("17151c44"), Color("d9c37444")))
+			trick_cards_row.add_child(empty)
+		return
+	for event in session.visual_trick_cards:
+		var slot := UiLayout.vbox(1)
+		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var name := UiLayout.wrap_label()
+		name.text = str(event.get("player_name", "Speler"))
+		name.add_theme_font_size_override("font_size", 9)
+		name.clip_text = true
+		slot.add_child(name)
+		var face := PlayingCardFace.new()
+		face.custom_minimum_size = Vector2(0, 68)
+		face.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		face.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		face.configure(event.get("card"))
+		slot.add_child(face)
+		trick_cards_row.add_child(slot)
 
 
 func _rebuild_hand(game: ToepenGame) -> void:
@@ -512,7 +545,7 @@ func _animate_play_event(event: Dictionary) -> void:
 	if player_id > 0 and opponent_portraits.has(player_id):
 		var portrait: Control = opponent_portraits[player_id]
 		start_global = portrait.global_position + portrait.size * 0.5 - Vector2(32, 43)
-	var end_global := trick_label.global_position + trick_label.size * 0.5 - Vector2(32, 43)
+	var end_global := trick_cards_row.global_position + trick_cards_row.size * 0.5 - Vector2(32, 43)
 	ghost.global_position = start_global
 	ghost.scale = Vector2(0.72, 0.72)
 	ghost.rotation = -0.12 if player_id % 2 == 0 else 0.12

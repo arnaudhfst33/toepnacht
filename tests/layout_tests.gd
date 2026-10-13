@@ -11,6 +11,7 @@ func run_all() -> int:
 	_test_compact_card()
 	_test_fill_rect_margins()
 	_test_bottom_safe_margin()
+	_test_visual_playing_card()
 	_test_new_placeholder_screens()
 	print("")
 	print("Layout tests: %d passed, %d failed" % [_passed, _failures])
@@ -47,6 +48,15 @@ func _test_bottom_safe_margin() -> void:
 	var margins := UiLayout.portrait_margins()
 	_expect(margins.get_theme_constant("margin_bottom") >= UiLayout.MIN_BOTTOM_SAFE_MARGIN, "portrait margins keep a bottom safe-area")
 	margins.free()
+
+
+func _test_visual_playing_card() -> void:
+	var face := PlayingCardFace.new()
+	var card := Card.new(Card.Suit.HEARTS, Card.Rank.TEN)
+	face.configure(card, true)
+	_expect(face.card.equals(card), "visual card keeps the played card")
+	_expect(face.recommended, "visual card supports the advice highlight")
+	face.free()
 
 
 func _test_new_placeholder_screens() -> void:

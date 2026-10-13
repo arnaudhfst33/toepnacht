@@ -17,6 +17,7 @@ var power_mode: String = ""
 var pending_wasdag_choice: bool = false
 var pending_was_challenger_id: int = -1
 var presentation_events: Array[Dictionary] = []
+var visual_trick_cards: Array[Dictionary] = []
 
 
 func _init() -> void:
@@ -33,6 +34,7 @@ func bind_campaign(p_flow: CampaignFlow) -> void:
 
 func start_new_pot() -> void:
 	tutorial = TutorialDirector.new()
+	visual_trick_cards.clear()
 	game.cards_open = false
 	game.start_pot()
 	status_text = "Nieuwe pot. Specials vóór de eerste kaart, daarna spelen."
@@ -41,6 +43,7 @@ func start_new_pot() -> void:
 
 func start_campaign_pot() -> void:
 	tutorial = TutorialDirector.new()
+	visual_trick_cards.clear()
 	game = ToepenGame.new()
 	_configure_campaign_table()
 	game.cards_open = _campaign_cards_are_open()
@@ -141,6 +144,7 @@ func next_round() -> void:
 		flow.campaign.clear_peek()
 	power_mode = ""
 	pending_wasdag_choice = false
+	visual_trick_cards.clear()
 	if tutorial.kind == TutorialDirector.Kind.BLUFFEN and tutorial.bluff_phase == 1:
 		tutorial.advance_bluffen(game)
 		status_text = tutorial.intro
@@ -387,13 +391,20 @@ func _apply_ai(player_id: int) -> void:
 
 
 func _queue_card_event(player_id: int, card: Card) -> void:
-	presentation_events.append({
+	# After a non-final completed trick the core opens a fresh Trick. The first
+	# played card therefore has play_count == 1 and replaces the previous visual
+	# trick. This also works when players passed during the previous trick.
+	if game.current_trick != null and game.current_trick.play_count() == 1:
+		visual_trick_cards.clear()
+	var event := {
 		"player_id": player_id,
 		"player_name": _name(player_id),
 		"card": card,
 		"label": UiLayout.compact_card(card),
 		"red": card.suit == Card.Suit.HEARTS or card.suit == Card.Suit.DIAMONDS,
-	})
+	}
+	presentation_events.append(event)
+	visual_trick_cards.append(event.duplicate())
 
 
 func take_presentation_events() -> Array[Dictionary]:
