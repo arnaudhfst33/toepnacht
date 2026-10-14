@@ -242,6 +242,17 @@ func _build_layout() -> void:
 	card_tip_bubble.add_child(tip_tail)
 	card_tip_bubble.visible = false
 
+	_bind_hold_tip(knock_button, "Kloppen verhoogt de inzet met 1. De anderen moeten MEE of PAS kiezen.")
+	_bind_hold_tip(mee_button, "MEE: je blijft in de ronde. Verlies je, dan krijg je de huidige inzet als strafpunten.")
+	_bind_hold_tip(pas_button, "PAS: je legt je kaarten blind weg en krijgt direct de huidige inzet als strafpunten.")
+	_bind_hold_tip(toep_button, "TOEP: vier kaarten met dezelfde waarde. Jij wint direct; alle anderen krijgen +3.")
+	_bind_hold_tip(kans_button, "KANS OP TOEP: met drie gelijke kaarten ruil je de afwijkende kaart één keer.")
+	_bind_hold_tip(vuile_button, "VUILE WAS: drie plaatjes en een 7. Je vraagt vier nieuwe kaarten. Bluffen mag, maar iemand kan je betwisten.")
+	_bind_hold_tip(witte_button, "WITTE WAS: vier plaatjes. Je vraagt vier nieuwe kaarten. Bluffen mag, maar iemand kan je betwisten.")
+	_bind_hold_tip(skip_specials_button, "VERDER: je gebruikt geen special en speelt door met deze vier kaarten.")
+	_bind_hold_tip(challenge_button, "BETWIST: draai de geclaimde was om. Bij echte was krijg jij +1; bij bluf krijgt de ander +1.")
+	_bind_hold_tip(decline_button, "LAAT: je controleert de was niet en krijgt geen strafpunt.")
+
 
 func _on_knock() -> void:
 	if session.human_knock():
@@ -430,7 +441,7 @@ func _rebuild_hand(game: ToepenGame) -> void:
 			card_tip = "Aanbevolen. " + card_tip
 		button.mouse_entered.connect(func() -> void:
 			if _tips_enabled():
-				_show_card_tip(card_tip, button)
+				_show_tip_bubble(card_tip, button)
 			_animate_card(button, Vector2(1.04, 1.04))
 		)
 		button.mouse_exited.connect(func() -> void:
@@ -439,7 +450,7 @@ func _rebuild_hand(game: ToepenGame) -> void:
 		)
 		button.button_down.connect(func() -> void:
 			if _tips_enabled():
-				_show_card_tip(card_tip, button)
+				_show_tip_bubble(card_tip, button)
 			_animate_card(button, Vector2(0.96, 0.96))
 		)
 		button.button_up.connect(func() -> void:
@@ -471,15 +482,15 @@ func _animate_card(button: Button, target: Vector2) -> void:
 	tween.tween_property(button, "scale", target, duration)
 
 
-func _show_card_tip(text: String, card_control: Control) -> void:
+func _show_tip_bubble(text: String, anchor_control: Control) -> void:
 	if card_tip_bubble == null:
 		return
 	tip_label.text = text
 	var bubble_width := minf(320.0, maxf(260.0, size.x - 24.0))
 	card_tip_panel.custom_minimum_size.x = bubble_width
 	card_tip_bubble.size = Vector2(bubble_width, 80)
-	var card_center := card_control.global_position.x - global_position.x + card_control.size.x * 0.5
-	var card_top := card_control.global_position.y - global_position.y
+	var card_center := anchor_control.global_position.x - global_position.x + anchor_control.size.x * 0.5
+	var card_top := anchor_control.global_position.y - global_position.y
 	card_tip_bubble.position = Vector2(
 		clampf(card_center - bubble_width * 0.5, 12.0, size.x - bubble_width - 12.0),
 		maxf(12.0, card_top - 94.0)
@@ -491,6 +502,19 @@ func _show_card_tip(text: String, card_control: Control) -> void:
 	var tween := card_tip_bubble.create_tween().set_parallel(true)
 	tween.tween_property(card_tip_bubble, "modulate:a", 1.0, 0.08)
 	tween.tween_property(card_tip_bubble, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+func _bind_hold_tip(button: Button, text: String) -> void:
+	button.mouse_entered.connect(func() -> void:
+		if _tips_enabled() and button.visible:
+			_show_tip_bubble(text, button)
+	)
+	button.mouse_exited.connect(_hide_card_tip)
+	button.button_down.connect(func() -> void:
+		if _tips_enabled():
+			_show_tip_bubble(text, button)
+	)
+	button.button_up.connect(_hide_card_tip)
 
 
 func _hide_card_tip() -> void:
@@ -506,7 +530,10 @@ func _play_presentation_events() -> void:
 	var events := session.take_presentation_events()
 	await get_tree().process_frame
 	for event in events:
-		await _animate_play_event(event)
+		if str(event.get("type", "play_card")) == "round_score":
+			await _animate_round_score_event(event)
+		else:
+			await _animate_play_event(event)
 	animation_running = false
 	animation_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_refresh()
@@ -551,6 +578,61 @@ func _animate_play_event(event: Dictionary) -> void:
 	var pause := 0.34 if duration > 0.3 else 0.12
 	await get_tree().create_timer(pause).timeout
 	ghost.queue_free()
+
+
+func _animate_round_score_event(event: Dictionary) -> void:
+	_sfx("decision")
+	var banner := Label.new()
+	banner.text = "RONDE UITSLAG"
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	banner.add_theme_font_size_override("font_size", 21)
+	banner.add_theme_color_override("font_color", Color("f6d66a"))
+	banner.add_theme_constant_override("outline_size", 7)
+	banner.add_theme_color_override("font_outline_color", Color("17151c"))
+	banner.size = Vector2(minf(300.0, size.x - 32.0), 44)
+	banner.position = Vector2((size.x - banner.size.x) * 0.5, maxf(14.0, trick_table.global_position.y - global_position.y + 28.0))
+	animation_layer.add_child(banner)
+	banner.modulate.a = 0.0
+	banner.scale = Vector2(0.75, 0.75)
+	banner.pivot_offset = banner.size * 0.5
+	var banner_tween := banner.create_tween().set_parallel(true)
+	banner_tween.tween_property(banner, "modulate:a", 1.0, 0.16)
+	banner_tween.tween_property(banner, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+	var deltas: Array = event.get("deltas", [])
+	var splashes: Array[Label] = []
+	for player_id in ToepenGame.PLAYER_COUNT:
+		var delta := int(deltas[player_id]) if player_id < deltas.size() else 0
+		var splash := Label.new()
+		splash.text = "+%d" % delta if delta >= 0 else str(delta)
+		splash.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		splash.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		splash.add_theme_font_size_override("font_size", 34)
+		splash.add_theme_constant_override("outline_size", 9)
+		splash.add_theme_color_override("font_outline_color", Color("17151c"))
+		splash.add_theme_color_override("font_color", Color("ff625f") if delta > 0 else Color("f6d66a"))
+		splash.size = Vector2(84, 58)
+		var target := trick_table.score_target_global(player_id) - global_position - splash.size * 0.5
+		splash.position = target + Vector2(0, 16)
+		splash.pivot_offset = splash.size * 0.5
+		splash.modulate.a = 0.0
+		splash.scale = Vector2(0.35, 0.35)
+		animation_layer.add_child(splash)
+		splashes.append(splash)
+		var delay := float(player_id) * 0.08
+		var tween := splash.create_tween().set_parallel(true)
+		tween.tween_property(splash, "modulate:a", 1.0, 0.16).set_delay(delay)
+		tween.tween_property(splash, "position", target - Vector2(0, 18), 0.38).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_property(splash, "scale", Vector2.ONE, 0.32).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await get_tree().create_timer(1.35).timeout
+	var fade := animation_layer.create_tween().set_parallel(true)
+	fade.tween_property(banner, "modulate:a", 0.0, 0.22)
+	for splash in splashes:
+		fade.tween_property(splash, "modulate:a", 0.0, 0.22)
+	await fade.finished
+	banner.queue_free()
+	for splash in splashes:
+		splash.queue_free()
 
 
 func _tips_enabled() -> bool:

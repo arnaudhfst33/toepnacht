@@ -67,8 +67,11 @@ func _test_retro_trick_table_seats() -> void:
 	var left := table.card_target_global(1)
 	var top := table.card_target_global(2)
 	var right := table.card_target_global(3)
+	var human_score := table.score_target_global(0)
+	var top_score := table.score_target_global(2)
 	_expect(human.y > top.y, "human played card is positioned at the bottom seat")
 	_expect(left.x < top.x and right.x > top.x, "opponent cards are positioned left, top and right")
+	_expect(human_score.y > top_score.y, "score splashes follow the four seat positions")
 	table.free()
 
 

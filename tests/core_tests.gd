@@ -34,6 +34,7 @@ func run_all() -> int:
 	_test_all_pass_knocker_wins()
 	_test_placeholder_ai_uses_own_legal_cards()
 	_test_table_session_starts()
+	_test_round_score_presentation_event()
 	print("")
 	print("Core tests: %d passed, %d failed" % [_passed, _failures])
 	return _failures
@@ -463,3 +464,15 @@ func _test_table_session_starts() -> void:
 	_expect_eq(session.game.state, ToepenGame.State.PRE_ROUND_SPECIALS, "session starts at specials")
 	_expect_eq(session.game.current_specials_actor_id(), 0, "human handles specials first")
 	_expect(session.waiting_for_human(), "session waits for the human to act")
+
+
+func _test_round_score_presentation_event() -> void:
+	var session := TableSession.new()
+	session.game.setup_controlled_round(_p1_wins_fourth_hands(), 0)
+	session._sync_round_score_baseline()
+	_play_out_p1_wins_fourth(session.game)
+	session._queue_round_score_event()
+	var events := session.take_presentation_events()
+	_expect_eq(events.size(), 1, "round end queues one score presentation")
+	_expect_eq(str(events[0].get("type", "")), "round_score", "score presentation has the round-score type")
+	_expect_eq(events[0].get("deltas", []), [1, 0, 1, 1], "score presentation shows each received penalty")

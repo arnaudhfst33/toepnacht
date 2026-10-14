@@ -73,6 +73,10 @@ func card_target_global(player_id: int) -> Vector2:
 	return global_position + _card_center(player_id) - Vector2(32, 43)
 
 
+func score_target_global(player_id: int) -> Vector2:
+	return global_position + _portrait_center(player_id)
+
+
 func _layout_seats() -> void:
 	if size.x <= 0.0 or size.y <= 0.0:
 		return

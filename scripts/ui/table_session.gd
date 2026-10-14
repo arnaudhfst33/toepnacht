@@ -18,6 +18,9 @@ var pending_wasdag_choice: bool = false
 var pending_was_challenger_id: int = -1
 var presentation_events: Array[Dictionary] = []
 var visual_trick_cards: Array[Dictionary] = []
+var round_start_points: Array[int] = []
+var tracked_round_serial: int = -1
+var score_event_round_serial: int = -1
 
 
 func _init() -> void:
@@ -196,8 +199,12 @@ func human_play(card: Card) -> bool:
 
 
 func human_toep() -> bool:
+	var previous_round_serial := game.round_serial
+	var previous_points := _points_snapshot()
 	if not game.declare_toep(ToepenGame.HUMAN_PLAYER_ID):
 		return false
+	if game.round_serial != previous_round_serial:
+		_queue_score_event_from(previous_points, ToepenGame.HUMAN_PLAYER_ID)
 	status_text = game.last_event
 	if flow != null:
 		flow.apply_toep_reward(game)
@@ -206,8 +213,12 @@ func human_toep() -> bool:
 
 
 func human_kans() -> bool:
+	var previous_round_serial := game.round_serial
+	var previous_points := _points_snapshot()
 	if not game.use_kans(ToepenGame.HUMAN_PLAYER_ID):
 		return false
+	if game.round_serial != previous_round_serial:
+		_queue_score_event_from(previous_points, ToepenGame.HUMAN_PLAYER_ID)
 	status_text = game.last_event
 	resolve_ai()
 	return true
@@ -278,12 +289,15 @@ func resolve_ai() -> void:
 	var guard := 0
 	while guard < 500:
 		guard += 1
+		_sync_round_score_baseline()
 		_update_tip()
 		if game.state == ToepenGame.State.GAME_END:
+			_queue_round_score_event()
 			status_text = "Pot gedaan. Winnaar: %s." % _name(game.pot_winner_id)
 			_handle_pot_end()
 			return
 		if game.state == ToepenGame.State.ROUND_END:
+			_queue_round_score_event()
 			if flow != null:
 				flow.apply_round_rewards(game)
 			if status_text == "":
@@ -341,6 +355,8 @@ func _apply_ai(player_id: int) -> void:
 	var actor_ai: BaselineAI = _ai_for(player_id)
 	var action := actor_ai.decide(view, game.rng)
 	var kind := str(action.get("type", "wait"))
+	var previous_round_serial := game.round_serial
+	var previous_points := _points_snapshot()
 	match kind:
 		"toep":
 			game.declare_toep(player_id)
@@ -388,6 +404,8 @@ func _apply_ai(player_id: int) -> void:
 					var fallback: Card = legal[0]
 					if game.play_card(player_id, fallback) == ToepenGame.PlayError.NONE:
 						_queue_card_event(player_id, fallback)
+	if game.round_serial != previous_round_serial and (kind == "toep" or kind == "kans"):
+		_queue_score_event_from(previous_points, player_id)
 
 
 func _queue_card_event(player_id: int, card: Card) -> void:
@@ -397,6 +415,7 @@ func _queue_card_event(player_id: int, card: Card) -> void:
 	if game.current_trick != null and game.current_trick.play_count() == 1:
 		visual_trick_cards.clear()
 	var event := {
+		"type": "play_card",
 		"player_id": player_id,
 		"player_name": _name(player_id),
 		"card": card,
@@ -405,6 +424,48 @@ func _queue_card_event(player_id: int, card: Card) -> void:
 	}
 	presentation_events.append(event)
 	visual_trick_cards.append(event.duplicate())
+
+
+func _sync_round_score_baseline() -> void:
+	if tracked_round_serial == game.round_serial:
+		return
+	tracked_round_serial = game.round_serial
+	score_event_round_serial = -1
+	round_start_points.clear()
+	for player in game.players:
+		round_start_points.append(player.penalty_points)
+
+
+func _queue_round_score_event() -> void:
+	if score_event_round_serial == game.round_serial:
+		return
+	if round_start_points.size() != ToepenGame.PLAYER_COUNT:
+		_sync_round_score_baseline()
+	_queue_score_event_from(round_start_points, game.last_round_winner_id)
+	score_event_round_serial = game.round_serial
+
+
+func _points_snapshot() -> Array[int]:
+	var points: Array[int] = []
+	for player in game.players:
+		points.append(player.penalty_points)
+	return points
+
+
+func _queue_score_event_from(start_points: Array[int], winner_id: int) -> void:
+	var deltas: Array[int] = []
+	var totals: Array[int] = []
+	for player_id in ToepenGame.PLAYER_COUNT:
+		var total := game.players[player_id].penalty_points
+		var start := start_points[player_id] if player_id < start_points.size() else total
+		deltas.append(total - start)
+		totals.append(total)
+	presentation_events.append({
+		"type": "round_score",
+		"winner_id": winner_id,
+		"deltas": deltas,
+		"totals": totals,
+	})
 
 
 func take_presentation_events() -> Array[Dictionary]:
