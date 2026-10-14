@@ -21,6 +21,7 @@ var skip_specials_button: Button
 var challenge_button: Button
 var decline_button: Button
 var tip_label: Label
+var card_tip_panel: PanelContainer
 var armoede_label: Label
 var caps_label: Label
 var peek_label: Label
@@ -120,7 +121,6 @@ func _build_layout() -> void:
 	middle.add_child(status_label)
 
 	tip_label = UiLayout.wrap_label()
-	middle.add_child(tip_label)
 
 	armoede_label = UiLayout.wrap_label()
 	middle.add_child(armoede_label)
@@ -218,6 +218,19 @@ func _build_layout() -> void:
 	UiLayout.fill_rect(animation_layer, 0)
 	add_child(animation_layer)
 
+	card_tip_panel = PanelContainer.new()
+	card_tip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card_tip_panel.anchor_left = 0.04
+	card_tip_panel.anchor_right = 0.96
+	card_tip_panel.anchor_top = 1.0
+	card_tip_panel.anchor_bottom = 1.0
+	card_tip_panel.offset_top = -214
+	card_tip_panel.offset_bottom = -126
+	card_tip_panel.add_theme_stylebox_override("panel", UiLayout.pixel_panel(Color("17151cf2"), Color("e7bd4c")))
+	card_tip_panel.add_child(tip_label)
+	card_tip_panel.visible = false
+	add_child(card_tip_panel)
+
 
 func _on_knock() -> void:
 	if session.human_knock():
@@ -296,8 +309,8 @@ func _refresh() -> void:
 		stake_label.text += " · LEERSTAND: OPEN KAARTEN"
 	trick_label.text = _trick_title(game)
 	status_label.text = session.status_text
-	tip_label.text = "TIP · %s" % session.tip_text
-	tip_label.visible = _tips_enabled() and session.tip_text != ""
+	if not _tips_enabled():
+		_hide_card_tip()
 	hand_strength_label.text = CardAdvisor.hand_summary(game.players[0].hand)
 	if CardAdvisor.recommended_card(game) != null and _tips_enabled():
 		hand_strength_label.text += " · gouden rand = advies"
@@ -375,6 +388,7 @@ func _trick_title(game: ToepenGame) -> String:
 
 
 func _rebuild_hand(game: ToepenGame) -> void:
+	_hide_card_tip()
 	for child in hand_row.get_children():
 		child.queue_free()
 	var human := game.players[0]
@@ -406,17 +420,22 @@ func _rebuild_hand(game: ToepenGame) -> void:
 		button.tooltip_text = card_tip
 		button.mouse_entered.connect(func() -> void:
 			if _tips_enabled():
-				tip_label.text = "KAART · %s" % card_tip
-				tip_label.visible = true
+				_show_card_tip(card_tip)
 			_animate_card(button, Vector2(1.04, 1.04))
 		)
 		button.mouse_exited.connect(func() -> void:
-			tip_label.text = "TIP · %s" % session.tip_text
-			tip_label.visible = _tips_enabled() and session.tip_text != ""
+			_hide_card_tip()
 			_animate_card(button, Vector2.ONE)
 		)
-		button.button_down.connect(func() -> void: _animate_card(button, Vector2(0.96, 0.96)))
-		button.button_up.connect(func() -> void: _animate_card(button, Vector2.ONE))
+		button.button_down.connect(func() -> void:
+			if _tips_enabled():
+				_show_card_tip(card_tip)
+			_animate_card(button, Vector2(0.96, 0.96))
+		)
+		button.button_up.connect(func() -> void:
+			_hide_card_tip()
+			_animate_card(button, Vector2.ONE)
+		)
 		var captured := card
 		button.pressed.connect(func() -> void:
 			if session.power_mode == "ruilen":
@@ -440,6 +459,24 @@ func _animate_card(button: Button, target: Vector2) -> void:
 	tween.set_trans(Tween.TRANS_QUAD)
 	tween.set_ease(Tween.EASE_OUT)
 	tween.tween_property(button, "scale", target, duration)
+
+
+func _show_card_tip(text: String) -> void:
+	if card_tip_panel == null:
+		return
+	tip_label.text = "KAARTTIP · %s" % text
+	card_tip_panel.visible = true
+	card_tip_panel.modulate.a = 0.0
+	card_tip_panel.scale = Vector2(0.98, 0.98)
+	card_tip_panel.pivot_offset = card_tip_panel.size * 0.5
+	var tween := card_tip_panel.create_tween().set_parallel(true)
+	tween.tween_property(card_tip_panel, "modulate:a", 1.0, 0.1)
+	tween.tween_property(card_tip_panel, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+func _hide_card_tip() -> void:
+	if card_tip_panel != null:
+		card_tip_panel.visible = false
 
 
 func _play_presentation_events() -> void:
