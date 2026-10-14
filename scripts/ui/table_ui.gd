@@ -530,10 +530,13 @@ func _play_presentation_events() -> void:
 	var events := session.take_presentation_events()
 	await get_tree().process_frame
 	for event in events:
-		if str(event.get("type", "play_card")) == "round_score":
-			await _animate_round_score_event(event)
-		else:
-			await _animate_play_event(event)
+		match str(event.get("type", "play_card")):
+			"round_score":
+				await _animate_round_score_event(event)
+			"special":
+				await _animate_special_event(event)
+			_:
+				await _animate_play_event(event)
 	animation_running = false
 	animation_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_refresh()
@@ -583,7 +586,13 @@ func _animate_play_event(event: Dictionary) -> void:
 func _animate_round_score_event(event: Dictionary) -> void:
 	_sfx("decision")
 	var banner := Label.new()
-	banner.text = "RONDE UITSLAG"
+	var winner_id := int(event.get("winner_id", -1))
+	var winner_name := "?"
+	if winner_id == 0:
+		winner_name = "JIJ"
+	elif winner_id > 0:
+		winner_name = session.opponent_name(winner_id).to_upper()
+	banner.text = "RONDE UITSLAG · %s WINT" % winner_name
 	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	banner.add_theme_font_size_override("font_size", 21)
 	banner.add_theme_color_override("font_color", Color("f6d66a"))
@@ -600,18 +609,29 @@ func _animate_round_score_event(event: Dictionary) -> void:
 	banner_tween.tween_property(banner, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 	var deltas: Array = event.get("deltas", [])
-	var splashes: Array[Label] = []
+	var totals: Array = event.get("totals", [])
+	var splashes: Array[Control] = []
 	for player_id in ToepenGame.PLAYER_COUNT:
 		var delta := int(deltas[player_id]) if player_id < deltas.size() else 0
-		var splash := Label.new()
-		splash.text = "+%d" % delta if delta >= 0 else str(delta)
-		splash.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		splash.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		splash.add_theme_font_size_override("font_size", 34)
-		splash.add_theme_constant_override("outline_size", 9)
-		splash.add_theme_color_override("font_outline_color", Color("17151c"))
-		splash.add_theme_color_override("font_color", Color("ff625f") if delta > 0 else Color("f6d66a"))
-		splash.size = Vector2(84, 58)
+		var total := int(totals[player_id]) if player_id < totals.size() else 0
+		var splash := VBoxContainer.new()
+		splash.size = Vector2(96, 76)
+		splash.add_theme_constant_override("separation", -7)
+		var amount_label := Label.new()
+		amount_label.text = "+%d" % delta if delta >= 0 else str(delta)
+		amount_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		amount_label.add_theme_font_size_override("font_size", 34)
+		amount_label.add_theme_constant_override("outline_size", 9)
+		amount_label.add_theme_color_override("font_outline_color", Color("17151c"))
+		amount_label.add_theme_color_override("font_color", Color("ff625f") if delta > 0 else Color("f6d66a"))
+		splash.add_child(amount_label)
+		var total_label := Label.new()
+		total_label.text = "totaal %d/15" % total
+		total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		total_label.add_theme_font_size_override("font_size", 11)
+		total_label.add_theme_constant_override("outline_size", 4)
+		total_label.add_theme_color_override("font_outline_color", Color("17151c"))
+		splash.add_child(total_label)
 		var target := trick_table.score_target_global(player_id) - global_position - splash.size * 0.5
 		splash.position = target + Vector2(0, 16)
 		splash.pivot_offset = splash.size * 0.5
@@ -624,7 +644,10 @@ func _animate_round_score_event(event: Dictionary) -> void:
 		tween.tween_property(splash, "modulate:a", 1.0, 0.16).set_delay(delay)
 		tween.tween_property(splash, "position", target - Vector2(0, 18), 0.38).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tween.tween_property(splash, "scale", Vector2.ONE, 0.32).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	await get_tree().create_timer(1.35).timeout
+	var hold_time := 1.8
+	if session.flow != null and str(session.flow.campaign.settings.get("animation_speed", "normal")) == "fast":
+		hold_time = 0.9
+	await get_tree().create_timer(hold_time).timeout
 	var fade := animation_layer.create_tween().set_parallel(true)
 	fade.tween_property(banner, "modulate:a", 0.0, 0.22)
 	for splash in splashes:
@@ -633,6 +656,47 @@ func _animate_round_score_event(event: Dictionary) -> void:
 	banner.queue_free()
 	for splash in splashes:
 		splash.queue_free()
+
+
+func _animate_special_event(event: Dictionary) -> void:
+	_sfx("decision")
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override("panel", UiLayout.pixel_panel(Color("17151cf4"), Color("e7bd4c")))
+	panel.size = Vector2(minf(330.0, size.x - 32.0), 112)
+	panel.position = Vector2((size.x - panel.size.x) * 0.5, trick_table.global_position.y - global_position.y + trick_table.size.y * 0.42)
+	animation_layer.add_child(panel)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 5)
+	panel.add_child(content)
+	var title := Label.new()
+	title.text = str(event.get("title", "SPECIAL"))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color("f6d66a"))
+	content.add_child(title)
+	var detail := Label.new()
+	detail.text = str(event.get("detail", ""))
+	detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail.add_theme_font_size_override("font_size", 13)
+	content.add_child(detail)
+	panel.pivot_offset = panel.size * 0.5
+	panel.scale = Vector2(0.72, 0.72)
+	panel.modulate.a = 0.0
+	var intro := panel.create_tween().set_parallel(true)
+	intro.tween_property(panel, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	intro.tween_property(panel, "modulate:a", 1.0, 0.12)
+	await intro.finished
+	var hold_time := 1.25
+	if session.flow != null and str(session.flow.campaign.settings.get("animation_speed", "normal")) == "fast":
+		hold_time = 0.65
+	await get_tree().create_timer(hold_time).timeout
+	var outro := panel.create_tween().set_parallel(true)
+	outro.tween_property(panel, "scale", Vector2(1.05, 1.05), 0.18)
+	outro.tween_property(panel, "modulate:a", 0.0, 0.18)
+	await outro.finished
+	panel.queue_free()
 
 
 func _tips_enabled() -> bool:

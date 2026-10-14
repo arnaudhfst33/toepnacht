@@ -203,6 +203,7 @@ func human_toep() -> bool:
 	var previous_points := _points_snapshot()
 	if not game.declare_toep(ToepenGame.HUMAN_PLAYER_ID):
 		return false
+	_queue_special_event("TOEP!", "Jij hebt vier gelijke kaarten. Alle anderen krijgen +3 strafpunten.", ToepenGame.HUMAN_PLAYER_ID)
 	if game.round_serial != previous_round_serial:
 		_queue_score_event_from(previous_points, ToepenGame.HUMAN_PLAYER_ID)
 	status_text = game.last_event
@@ -217,6 +218,10 @@ func human_kans() -> bool:
 	var previous_points := _points_snapshot()
 	if not game.use_kans(ToepenGame.HUMAN_PLAYER_ID):
 		return false
+	if game.last_kans_completed_toep:
+		_queue_special_event("TOEP VIA KANS!", "De nieuwe kaart maakt vier gelijke kaarten. Alle anderen krijgen +3.", ToepenGame.HUMAN_PLAYER_ID)
+	else:
+		_queue_special_event("KANS OP TOEP", "Je ruilde de afwijkende kaart, maar trok geen vierde gelijke.", ToepenGame.HUMAN_PLAYER_ID)
 	if game.round_serial != previous_round_serial:
 		_queue_score_event_from(previous_points, ToepenGame.HUMAN_PLAYER_ID)
 	status_text = game.last_event
@@ -227,6 +232,7 @@ func human_kans() -> bool:
 func human_vuile_was() -> bool:
 	if not game.call_vuile_was(ToepenGame.HUMAN_PLAYER_ID):
 		return false
+	_queue_was_claim_event(ToepenGame.HUMAN_PLAYER_ID, false)
 	status_text = game.last_event
 	resolve_ai()
 	return true
@@ -235,6 +241,7 @@ func human_vuile_was() -> bool:
 func human_witte_was() -> bool:
 	if not game.declare_witte_was(ToepenGame.HUMAN_PLAYER_ID):
 		return false
+	_queue_was_claim_event(ToepenGame.HUMAN_PLAYER_ID, true)
 	status_text = game.last_event
 	resolve_ai()
 	return true
@@ -249,20 +256,27 @@ func human_skip_specials() -> bool:
 
 
 func human_challenge() -> bool:
+	var caller_id := game.vuile_was_caller_id
+	var was_witte := game.was_claim_is_witte
 	if not game.challenge_vuile_was(ToepenGame.HUMAN_PLAYER_ID):
 		return false
 	if power_service != null and flow != null:
 		power_service.resolve_wasdag(game, flow.campaign)
 		flow.persist()
 	status_text = game.last_event
+	_queue_was_result_event(caller_id, was_witte)
 	resolve_ai()
 	return true
 
 
 func human_decline_challenge() -> bool:
+	var caller_id := game.vuile_was_caller_id
+	var was_witte := game.was_claim_is_witte
 	if not game.decline_vuile_was_challenge(ToepenGame.HUMAN_PLAYER_ID):
 		return false
 	status_text = "Jij betwist niet."
+	if game.state != ToepenGame.State.VUILE_WAS_CHALLENGE:
+		_queue_special_event("WAS GELOOFD", "%s krijgt vier nieuwe kaarten; niemand betwistte de claim." % _name(caller_id), caller_id)
 	resolve_ai()
 	return true
 
@@ -360,23 +374,36 @@ func _apply_ai(player_id: int) -> void:
 	match kind:
 		"toep":
 			game.declare_toep(player_id)
+			_queue_special_event("TOEP!", "%s heeft vier gelijke kaarten. Alle anderen krijgen +3." % _name(player_id), player_id)
 			status_text = game.last_event
 		"kans":
 			game.use_kans(player_id)
+			if game.last_kans_completed_toep:
+				_queue_special_event("TOEP VIA KANS!", "%s trekt de vierde gelijke kaart. Alle anderen krijgen +3." % _name(player_id), player_id)
+			else:
+				_queue_special_event("KANS OP TOEP", "%s ruilt één kaart, maar maakt geen Toep." % _name(player_id), player_id)
 			status_text = game.last_event
 		"vuile_was":
 			game.call_vuile_was(player_id)
+			_queue_was_claim_event(player_id, false)
 			status_text = game.last_event
 		"witte_was":
 			game.declare_witte_was(player_id)
+			_queue_was_claim_event(player_id, true)
 			status_text = game.last_event
 		"challenge":
+			var challenge_caller := game.vuile_was_caller_id
+			var was_witte := game.was_claim_is_witte
 			game.challenge_vuile_was(player_id)
 			if power_service != null and flow != null:
 				power_service.resolve_wasdag(game, flow.campaign)
 			status_text = game.last_event
+			_queue_was_result_event(challenge_caller, was_witte)
 		"decline_challenge":
+			var decline_caller := game.vuile_was_caller_id
 			game.decline_vuile_was_challenge(player_id)
+			if game.state != ToepenGame.State.VUILE_WAS_CHALLENGE:
+				_queue_special_event("WAS GELOOFD", "%s krijgt vier nieuwe kaarten; niemand betwistte de claim." % _name(decline_caller), decline_caller)
 		"skip_specials":
 			game.skip_specials(player_id)
 		"knock":
@@ -426,6 +453,31 @@ func _queue_card_event(player_id: int, card: Card) -> void:
 	visual_trick_cards.append(event.duplicate())
 
 
+func _queue_special_event(title: String, detail: String, player_id: int) -> void:
+	presentation_events.append({
+		"type": "special",
+		"title": title,
+		"detail": detail,
+		"player_id": player_id,
+	})
+
+
+func _queue_was_claim_event(player_id: int, is_witte: bool) -> void:
+	var title := "WITTE WAS!" if is_witte else "VUILE WAS!"
+	var was_name := "witte was" if is_witte else "vuile was"
+	var pattern := "vier plaatjes" if is_witte else "drie plaatjes en een 7"
+	_queue_special_event(title, "%s claimt %s. Dat betekent %s. Betwisten mag." % [_name(player_id), was_name, pattern], player_id)
+
+
+func _queue_was_result_event(caller_id: int, was_witte: bool) -> void:
+	var was_name := "Witte Was" if was_witte else "Vuile Was"
+	var was_bluff := game.last_witte_was_bluff if was_witte else game.last_vuile_was_bluff
+	if was_bluff:
+		_queue_special_event("BLUF BETRAPT!", "%s had geen %s, krijgt +1 en houdt de oude kaarten." % [_name(caller_id), was_name], caller_id)
+	else:
+		_queue_special_event("ECHTE %s" % was_name.to_upper(), "%s krijgt vier nieuwe kaarten. De betwister krijgt +1." % _name(caller_id), caller_id)
+
+
 func _sync_round_score_baseline() -> void:
 	if tracked_round_serial == game.round_serial:
 		return
@@ -441,7 +493,8 @@ func _queue_round_score_event() -> void:
 		return
 	if round_start_points.size() != ToepenGame.PLAYER_COUNT:
 		_sync_round_score_baseline()
-	_queue_score_event_from(round_start_points, game.last_round_winner_id)
+	var winner_id := game.pot_winner_id if game.state == ToepenGame.State.GAME_END and game.pot_winner_id >= 0 else game.last_round_winner_id
+	_queue_score_event_from(round_start_points, winner_id)
 	score_event_round_serial = game.round_serial
 
 
