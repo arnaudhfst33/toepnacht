@@ -165,6 +165,7 @@ func human_knock() -> bool:
 		power_service.consume_dubbel_on_knock(game, flow.campaign)
 		flow.persist()
 	status_text = "Jij klopt. Inzet is nu %d." % game.round_stake
+	_queue_decision_event(ToepenGame.HUMAN_PLAYER_ID, "KLOP!", "Inzet wordt %d" % game.round_stake)
 	resolve_ai()
 	return true
 
@@ -173,6 +174,7 @@ func human_mee() -> bool:
 	if not game.respond_to_knock(ToepenGame.HUMAN_PLAYER_ID, true):
 		return false
 	status_text = "Jij gaat mee."
+	_queue_decision_event(ToepenGame.HUMAN_PLAYER_ID, "MEE", "Jij blijft in de ronde")
 	resolve_ai()
 	return true
 
@@ -184,6 +186,7 @@ func human_pas() -> bool:
 	if not game.respond_to_knock(ToepenGame.HUMAN_PLAYER_ID, false):
 		return false
 	status_text = "Jij past en krijgt %d strafpunt(en)." % game.round_stake
+	_queue_decision_event(ToepenGame.HUMAN_PLAYER_ID, "PAS", "+%d en kaarten weg" % game.round_stake)
 	resolve_ai()
 	return true
 
@@ -361,6 +364,7 @@ func _apply_ai(player_id: int) -> void:
 	if tutorial.force_ai_knock and game.can_knock(player_id) and game.tricks_completed == 0 and game.current_trick.play_count() > 0:
 		game.request_knock(player_id)
 		status_text = "%s klopt (script). Inzet %d." % [_name(player_id), game.round_stake]
+		_queue_decision_event(player_id, "KLOP!", "Inzet wordt %d" % game.round_stake)
 		tutorial.force_ai_knock = false
 		tutorial.force_ai_knock_strong = false
 		tutorial.force_ai_knock_bluff = false
@@ -409,12 +413,15 @@ func _apply_ai(player_id: int) -> void:
 		"knock":
 			game.request_knock(player_id)
 			status_text = "%s klopt. Inzet %d." % [_name(player_id), game.round_stake]
+			_queue_decision_event(player_id, "KLOP!", "Inzet wordt %d" % game.round_stake)
 		"pas":
 			game.respond_to_knock(player_id, false)
 			status_text = "%s past." % _name(player_id)
+			_queue_decision_event(player_id, "PAS", "+%d en kaarten weg" % game.round_stake)
 		"mee":
 			game.respond_to_knock(player_id, true)
 			status_text = "%s gaat mee." % _name(player_id)
+			_queue_decision_event(player_id, "MEE", "Blijft in de ronde")
 		"play":
 			var card: Card = action.get("card")
 			if card != null:
@@ -423,6 +430,7 @@ func _apply_ai(player_id: int) -> void:
 		_:
 			if game.state == ToepenGame.State.KNOCK_DECISIONS:
 				game.respond_to_knock(player_id, true)
+				_queue_decision_event(player_id, "MEE", "Blijft in de ronde")
 			elif game.state == ToepenGame.State.PRE_ROUND_SPECIALS:
 				game.skip_specials(player_id)
 			elif game.state == ToepenGame.State.NORMAL_PLAY:
@@ -459,6 +467,15 @@ func _queue_special_event(title: String, detail: String, player_id: int) -> void
 		"title": title,
 		"detail": detail,
 		"player_id": player_id,
+	})
+
+
+func _queue_decision_event(player_id: int, title: String, detail: String) -> void:
+	presentation_events.append({
+		"type": "decision",
+		"player_id": player_id,
+		"title": title,
+		"detail": detail,
 	})
 
 

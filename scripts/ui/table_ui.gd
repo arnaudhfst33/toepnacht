@@ -535,6 +535,8 @@ func _play_presentation_events() -> void:
 				await _animate_round_score_event(event)
 			"special":
 				await _animate_special_event(event)
+			"decision":
+				await _animate_decision_event(event)
 			_:
 				await _animate_play_event(event)
 	animation_running = false
@@ -697,6 +699,50 @@ func _animate_special_event(event: Dictionary) -> void:
 	outro.tween_property(panel, "modulate:a", 0.0, 0.18)
 	await outro.finished
 	panel.queue_free()
+
+
+func _animate_decision_event(event: Dictionary) -> void:
+	var player_id := int(event.get("player_id", 0))
+	var bubble := PanelContainer.new()
+	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bubble.add_theme_stylebox_override("panel", UiLayout.pixel_panel(Color("17151cf2"), Color("60d5c1")))
+	bubble.size = Vector2(138, 66)
+	var target := trick_table.score_target_global(player_id) - global_position
+	bubble.position = Vector2(
+		clampf(target.x - bubble.size.x * 0.5, 10.0, size.x - bubble.size.x - 10.0),
+		clampf(target.y - 84.0, 10.0, size.y - bubble.size.y - 10.0)
+	)
+	animation_layer.add_child(bubble)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", -2)
+	bubble.add_child(content)
+	var title := Label.new()
+	title.text = str(event.get("title", ""))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 21)
+	title.add_theme_color_override("font_color", Color("f6d66a") if title.text == "KLOP!" else Color("f1f0db"))
+	content.add_child(title)
+	var detail := Label.new()
+	detail.text = str(event.get("detail", ""))
+	detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	detail.add_theme_font_size_override("font_size", 11)
+	content.add_child(detail)
+	bubble.pivot_offset = bubble.size * 0.5
+	bubble.scale = Vector2(0.55, 0.55)
+	bubble.modulate.a = 0.0
+	var intro := bubble.create_tween().set_parallel(true)
+	intro.tween_property(bubble, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	intro.tween_property(bubble, "modulate:a", 1.0, 0.08)
+	await intro.finished
+	var hold_time := 0.72
+	if session.flow != null and str(session.flow.campaign.settings.get("animation_speed", "normal")) == "fast":
+		hold_time = 0.32
+	await get_tree().create_timer(hold_time).timeout
+	var outro := bubble.create_tween().set_parallel(true)
+	outro.tween_property(bubble, "position:y", bubble.position.y - 12.0, 0.16)
+	outro.tween_property(bubble, "modulate:a", 0.0, 0.16)
+	await outro.finished
+	bubble.queue_free()
 
 
 func _tips_enabled() -> bool:
