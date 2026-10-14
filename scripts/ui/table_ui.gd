@@ -21,6 +21,7 @@ var skip_specials_button: Button
 var challenge_button: Button
 var decline_button: Button
 var tip_label: Label
+var card_tip_bubble: VBoxContainer
 var card_tip_panel: PanelContainer
 var armoede_label: Label
 var caps_label: Label
@@ -218,18 +219,28 @@ func _build_layout() -> void:
 	UiLayout.fill_rect(animation_layer, 0)
 	add_child(animation_layer)
 
+	card_tip_bubble = VBoxContainer.new()
+	card_tip_bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card_tip_bubble.custom_minimum_size = Vector2(300, 80)
+	card_tip_bubble.z_index = 100
+	card_tip_bubble.add_theme_constant_override("separation", -5)
+	add_child(card_tip_bubble)
+
 	card_tip_panel = PanelContainer.new()
 	card_tip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	card_tip_panel.anchor_left = 0.04
-	card_tip_panel.anchor_right = 0.96
-	card_tip_panel.anchor_top = 1.0
-	card_tip_panel.anchor_bottom = 1.0
-	card_tip_panel.offset_top = -214
-	card_tip_panel.offset_bottom = -126
+	card_tip_panel.custom_minimum_size = Vector2(300, 68)
 	card_tip_panel.add_theme_stylebox_override("panel", UiLayout.pixel_panel(Color("17151cf2"), Color("e7bd4c")))
+	tip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tip_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	card_tip_panel.add_child(tip_label)
-	card_tip_panel.visible = false
-	add_child(card_tip_panel)
+	card_tip_bubble.add_child(card_tip_panel)
+	var tip_tail := Label.new()
+	tip_tail.text = "▼"
+	tip_tail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tip_tail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tip_tail.add_theme_color_override("font_color", Color("e7bd4c"))
+	card_tip_bubble.add_child(tip_tail)
+	card_tip_bubble.visible = false
 
 
 func _on_knock() -> void:
@@ -417,10 +428,9 @@ func _rebuild_hand(game: ToepenGame) -> void:
 		var card_tip := CardAdvisor.card_tooltip(card, is_legal)
 		if recommended != null and recommended.equals(card):
 			card_tip = "Aanbevolen. " + card_tip
-		button.tooltip_text = card_tip
 		button.mouse_entered.connect(func() -> void:
 			if _tips_enabled():
-				_show_card_tip(card_tip)
+				_show_card_tip(card_tip, button)
 			_animate_card(button, Vector2(1.04, 1.04))
 		)
 		button.mouse_exited.connect(func() -> void:
@@ -429,7 +439,7 @@ func _rebuild_hand(game: ToepenGame) -> void:
 		)
 		button.button_down.connect(func() -> void:
 			if _tips_enabled():
-				_show_card_tip(card_tip)
+				_show_card_tip(card_tip, button)
 			_animate_card(button, Vector2(0.96, 0.96))
 		)
 		button.button_up.connect(func() -> void:
@@ -461,22 +471,31 @@ func _animate_card(button: Button, target: Vector2) -> void:
 	tween.tween_property(button, "scale", target, duration)
 
 
-func _show_card_tip(text: String) -> void:
-	if card_tip_panel == null:
+func _show_card_tip(text: String, card_control: Control) -> void:
+	if card_tip_bubble == null:
 		return
-	tip_label.text = "KAARTTIP · %s" % text
-	card_tip_panel.visible = true
-	card_tip_panel.modulate.a = 0.0
-	card_tip_panel.scale = Vector2(0.98, 0.98)
-	card_tip_panel.pivot_offset = card_tip_panel.size * 0.5
-	var tween := card_tip_panel.create_tween().set_parallel(true)
-	tween.tween_property(card_tip_panel, "modulate:a", 1.0, 0.1)
-	tween.tween_property(card_tip_panel, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tip_label.text = text
+	var bubble_width := minf(320.0, maxf(260.0, size.x - 24.0))
+	card_tip_panel.custom_minimum_size.x = bubble_width
+	card_tip_bubble.size = Vector2(bubble_width, 80)
+	var card_center := card_control.global_position.x - global_position.x + card_control.size.x * 0.5
+	var card_top := card_control.global_position.y - global_position.y
+	card_tip_bubble.position = Vector2(
+		clampf(card_center - bubble_width * 0.5, 12.0, size.x - bubble_width - 12.0),
+		maxf(12.0, card_top - 94.0)
+	)
+	card_tip_bubble.visible = true
+	card_tip_bubble.modulate.a = 0.0
+	card_tip_bubble.scale = Vector2(0.94, 0.94)
+	card_tip_bubble.pivot_offset = Vector2(bubble_width * 0.5, 80.0)
+	var tween := card_tip_bubble.create_tween().set_parallel(true)
+	tween.tween_property(card_tip_bubble, "modulate:a", 1.0, 0.08)
+	tween.tween_property(card_tip_bubble, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func _hide_card_tip() -> void:
-	if card_tip_panel != null:
-		card_tip_panel.visible = false
+	if card_tip_bubble != null:
+		card_tip_bubble.visible = false
 
 
 func _play_presentation_events() -> void:
