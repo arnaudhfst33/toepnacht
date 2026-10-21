@@ -65,9 +65,11 @@ func _test_visual_playing_card() -> void:
 
 func _test_picture_card_art() -> void:
 	var face := PlayingCardFace.new()
-	for rank in [Card.Rank.JACK, Card.Rank.QUEEN, Card.Rank.KING, Card.Rank.ACE]:
+	for rank in [Card.Rank.JACK, Card.Rank.QUEEN, Card.Rank.KING]:
 		face.configure(Card.new(Card.Suit.CLUBS, rank))
 		_expect(face.uses_picture_art(), "%s uses illustrated card art" % Card.new(Card.Suit.CLUBS, rank).rank_name())
+	face.configure(Card.new(Card.Suit.CLUBS, Card.Rank.ACE))
+	_expect(not face.uses_picture_art(), "ace uses a clear A and single suit pip")
 	face.configure(Card.new(Card.Suit.CLUBS, Card.Rank.TEN))
 	_expect(not face.uses_picture_art(), "number card keeps pip layout")
 	face.free()

@@ -54,23 +54,22 @@ func _draw() -> void:
 	var ink := Color("a92f42") if _is_red() else Color("1a1921")
 	var font := get_theme_default_font()
 	var short_rank := _short_rank()
-	var suit := _suit_symbol()
 	var corner_size := clampi(int(size.x * 0.23), 13, 20)
-	var center_size := clampi(int(size.x * 0.5), 25, 40)
 	draw_string(font, face_rect.position + Vector2(7, 20), short_rank, HORIZONTAL_ALIGNMENT_LEFT, -1, corner_size, ink)
-	draw_string(font, face_rect.position + Vector2(8, 38), suit, HORIZONTAL_ALIGNMENT_LEFT, -1, corner_size, ink)
+	_draw_suit_icon(face_rect.position + Vector2(14, 32), clampf(face_rect.size.x * 0.07, 4.0, 6.0), ink)
 	if uses_picture_art():
-		_draw_picture_art(face_rect, ink, font, suit, center_size)
+		_draw_picture_art(face_rect, ink)
 	else:
-		draw_string(font, Vector2(face_rect.position.x, face_rect.position.y + face_rect.size.y * 0.62), suit, HORIZONTAL_ALIGNMENT_CENTER, face_rect.size.x, center_size, ink)
-	draw_string(font, Vector2(face_rect.position.x + 5, face_rect.end.y - 7), short_rank + suit, HORIZONTAL_ALIGNMENT_RIGHT, face_rect.size.x - 10, corner_size, ink)
+		_draw_pip_layout(face_rect, ink)
+	draw_string(font, Vector2(face_rect.position.x + 5, face_rect.end.y - 7), short_rank, HORIZONTAL_ALIGNMENT_RIGHT, face_rect.size.x - 10, corner_size, ink)
+	_draw_suit_icon(face_rect.end - Vector2(14, 25), clampf(face_rect.size.x * 0.065, 3.5, 5.5), ink)
 
 
 func uses_picture_art() -> bool:
-	return card != null and card.is_picture()
+	return card != null and card.rank in [Card.Rank.JACK, Card.Rank.QUEEN, Card.Rank.KING]
 
 
-func _draw_picture_art(face_rect: Rect2, ink: Color, font: Font, suit: String, suit_size: int) -> void:
+func _draw_picture_art(face_rect: Rect2, ink: Color) -> void:
 	var center := face_rect.get_center() + Vector2(0, 3)
 	var art_width := minf(face_rect.size.x * 0.58, 42.0)
 	var art_height := minf(face_rect.size.y * 0.54, 52.0)
@@ -78,18 +77,6 @@ func _draw_picture_art(face_rect: Rect2, ink: Color, font: Font, suit: String, s
 	draw_rect(art, Color("ead7aa"))
 	draw_rect(art.grow(-2), Color("4d6b8f"))
 	draw_rect(art.grow(-4), Color("f2dfb7"))
-
-	if card.rank == Card.Rank.ACE:
-		var diamond := PackedVector2Array([
-			center + Vector2(0, -art_height * 0.38),
-			center + Vector2(art_width * 0.36, 0),
-			center + Vector2(0, art_height * 0.38),
-			center + Vector2(-art_width * 0.36, 0),
-		])
-		draw_colored_polygon(diamond, Color("fff0c9"))
-		draw_polyline(PackedVector2Array([diamond[0], diamond[1], diamond[2], diamond[3], diamond[0]]), ink, 2.0)
-		draw_string(font, Vector2(art.position.x, center.y + suit_size * 0.32), suit, HORIZONTAL_ALIGNMENT_CENTER, art.size.x, suit_size, ink)
-		return
 
 	var skin := Color("d99a68")
 	var coat := Color("b73555") if _is_red() else Color("345d91")
@@ -127,6 +114,64 @@ func _draw_picture_art(face_rect: Rect2, ink: Color, font: Font, suit: String, s
 				head_center + Vector2(0, art_width * 0.27),
 				head_center + Vector2(art_width * 0.16, art_width * 0.1),
 			]), Color("654037"))
+	_draw_suit_icon(center + Vector2(0, art_height * 0.28), clampf(art_width * 0.13, 4.0, 6.0), ink)
+
+
+func _draw_pip_layout(face_rect: Rect2, ink: Color) -> void:
+	var center := face_rect.get_center() + Vector2(0, 2)
+	if card.rank == Card.Rank.ACE:
+		_draw_suit_icon(center, clampf(face_rect.size.x * 0.2, 9.0, 16.0), ink)
+		return
+	var normalized_positions: Array[Vector2] = []
+	var left := 0.34
+	var right := 0.66
+	match card.rank:
+		Card.Rank.SEVEN:
+			normalized_positions = [Vector2(left, 0.27), Vector2(right, 0.27), Vector2(0.5, 0.38), Vector2(left, 0.5), Vector2(right, 0.5), Vector2(left, 0.73), Vector2(right, 0.73)]
+		Card.Rank.EIGHT:
+			normalized_positions = [Vector2(left, 0.25), Vector2(right, 0.25), Vector2(0.5, 0.37), Vector2(left, 0.5), Vector2(right, 0.5), Vector2(0.5, 0.63), Vector2(left, 0.75), Vector2(right, 0.75)]
+		Card.Rank.NINE:
+			normalized_positions = [Vector2(left, 0.23), Vector2(right, 0.23), Vector2(left, 0.41), Vector2(right, 0.41), Vector2(0.5, 0.5), Vector2(left, 0.59), Vector2(right, 0.59), Vector2(left, 0.77), Vector2(right, 0.77)]
+		Card.Rank.TEN:
+			normalized_positions = [Vector2(left, 0.21), Vector2(right, 0.21), Vector2(0.5, 0.32), Vector2(left, 0.41), Vector2(right, 0.41), Vector2(left, 0.59), Vector2(right, 0.59), Vector2(0.5, 0.68), Vector2(left, 0.79), Vector2(right, 0.79)]
+	var pip_size := clampf(face_rect.size.x * 0.055, 3.2, 5.4)
+	for point in normalized_positions:
+		_draw_suit_icon(face_rect.position + Vector2(face_rect.size.x * point.x, face_rect.size.y * point.y), pip_size, ink)
+
+
+func _draw_suit_icon(center: Vector2, radius: float, ink: Color) -> void:
+	match card.suit:
+		Card.Suit.HEARTS:
+			draw_circle(center + Vector2(-radius * 0.38, -radius * 0.25), radius * 0.52, ink)
+			draw_circle(center + Vector2(radius * 0.38, -radius * 0.25), radius * 0.52, ink)
+			draw_colored_polygon(PackedVector2Array([
+				center + Vector2(-radius * 0.83, -radius * 0.12),
+				center + Vector2(radius * 0.83, -radius * 0.12),
+				center + Vector2(0, radius),
+			]), ink)
+		Card.Suit.DIAMONDS:
+			draw_colored_polygon(PackedVector2Array([
+				center + Vector2(0, -radius), center + Vector2(radius * 0.72, 0),
+				center + Vector2(0, radius), center + Vector2(-radius * 0.72, 0),
+			]), ink)
+		Card.Suit.CLUBS:
+			draw_circle(center + Vector2(0, -radius * 0.42), radius * 0.5, ink)
+			draw_circle(center + Vector2(-radius * 0.48, radius * 0.08), radius * 0.5, ink)
+			draw_circle(center + Vector2(radius * 0.48, radius * 0.08), radius * 0.5, ink)
+			draw_colored_polygon(PackedVector2Array([
+				center + Vector2(-radius * 0.18, radius * 0.15), center + Vector2(radius * 0.18, radius * 0.15),
+				center + Vector2(radius * 0.34, radius), center + Vector2(-radius * 0.34, radius),
+			]), ink)
+		Card.Suit.SPADES:
+			draw_colored_polygon(PackedVector2Array([
+				center + Vector2(0, -radius), center + Vector2(radius * 0.86, radius * 0.08),
+				center + Vector2(radius * 0.35, radius * 0.35), center,
+				center + Vector2(-radius * 0.35, radius * 0.35), center + Vector2(-radius * 0.86, radius * 0.08),
+			]), ink)
+			draw_colored_polygon(PackedVector2Array([
+				center + Vector2(-radius * 0.16, radius * 0.15), center + Vector2(radius * 0.16, radius * 0.15),
+				center + Vector2(radius * 0.34, radius), center + Vector2(-radius * 0.34, radius),
+			]), ink)
 
 
 func _short_rank() -> String:
@@ -147,20 +192,6 @@ func _short_rank() -> String:
 			return "9"
 		Card.Rank.TEN:
 			return "10"
-		_:
-			return "?"
-
-
-func _suit_symbol() -> String:
-	match card.suit:
-		Card.Suit.HEARTS:
-			return "♥"
-		Card.Suit.DIAMONDS:
-			return "♦"
-		Card.Suit.CLUBS:
-			return "♣"
-		Card.Suit.SPADES:
-			return "♠"
 		_:
 			return "?"
 
