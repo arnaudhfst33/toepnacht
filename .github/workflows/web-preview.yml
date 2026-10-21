@@ -50,10 +50,17 @@ jobs:
         with:
           enablement: true
 
+      - name: Create cache-proof versioned preview
+        run: |
+          mkdir -p build/pages
+          cp -a build/web/. build/pages/
+          mkdir -p "build/pages/${GITHUB_SHA}"
+          cp -a build/web/. "build/pages/${GITHUB_SHA}/"
+
       - name: Upload GitHub Pages build
         uses: actions/upload-pages-artifact@v3
         with:
-          path: build/web
+          path: build/pages
 
   deploy:
     environment:

@@ -34,6 +34,9 @@ func _ready() -> void:
 	restart_button.pressed.connect(_on_restart_requested)
 	level_select_button = _add_button(box, "LEVEL SELECT")
 	level_select_button.pressed.connect(_on_level_select)
+	if OS.has_feature("web"):
+		var test_levels_button := _add_button(box, "TEST: ALLE LEVELS OPENEN")
+		test_levels_button.pressed.connect(_on_test_levels)
 	_add_button(box, "HOE WERKT TOEPEN?").pressed.connect(func() -> void:
 		get_tree().change_scene_to_file("res://scenes/tutorials.tscn")
 	)
@@ -73,6 +76,12 @@ func _add_button(parent: Node, text: String) -> Button:
 
 
 func _on_level_select() -> void:
+	get_tree().change_scene_to_file("res://scenes/campaign.tscn")
+
+
+func _on_test_levels() -> void:
+	Boot.activate_all_levels_test()
+	Boot.mode = "play"
 	get_tree().change_scene_to_file("res://scenes/campaign.tscn")
 
 
