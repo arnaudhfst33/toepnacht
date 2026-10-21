@@ -537,6 +537,8 @@ func _play_presentation_events() -> void:
 				await _animate_special_event(event)
 			"decision":
 				await _animate_decision_event(event)
+			"stage_intro":
+				await _animate_stage_intro(event)
 			_:
 				await _animate_play_event(event)
 	animation_running = false
@@ -743,6 +745,55 @@ func _animate_decision_event(event: Dictionary) -> void:
 	outro.tween_property(bubble, "modulate:a", 0.0, 0.16)
 	await outro.finished
 	bubble.queue_free()
+
+
+func _animate_stage_intro(event: Dictionary) -> void:
+	_sfx("decision")
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override("panel", UiLayout.pixel_panel(Color("10151af5"), Color("e7bd4c")))
+	panel.size = Vector2(minf(338.0, size.x - 28.0), 154)
+	panel.position = Vector2((size.x - panel.size.x) * 0.5, trick_table.global_position.y - global_position.y + trick_table.size.y * 0.28)
+	animation_layer.add_child(panel)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 5)
+	panel.add_child(content)
+	var title := Label.new()
+	title.text = str(event.get("location", "LOCATIE")).to_upper()
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", Color("f6d66a"))
+	content.add_child(title)
+	var potje := int(event.get("potje", 1))
+	var subtitle := Label.new()
+	subtitle.text = "BOSS · %s" % str(event.get("boss_name", "")) if bool(event.get("boss", false)) else "POTJE %d VAN 3" % potje
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subtitle.add_theme_font_size_override("font_size", 17)
+	content.add_child(subtitle)
+	var opponents: Array = event.get("opponents", [])
+	var names := Label.new()
+	names.text = "Aan tafel: " + " · ".join(PackedStringArray(opponents))
+	names.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	names.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	names.add_theme_font_size_override("font_size", 12)
+	names.modulate = Color("d8d3bd")
+	content.add_child(names)
+	panel.pivot_offset = panel.size * 0.5
+	panel.scale = Vector2(0.72, 0.72)
+	panel.modulate.a = 0.0
+	var intro := panel.create_tween().set_parallel(true)
+	intro.tween_property(panel, "scale", Vector2.ONE, 0.32).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	intro.tween_property(panel, "modulate:a", 1.0, 0.12)
+	await intro.finished
+	var hold_time := 1.65
+	if session.flow != null and str(session.flow.campaign.settings.get("animation_speed", "normal")) == "fast":
+		hold_time = 0.8
+	await get_tree().create_timer(hold_time).timeout
+	var outro := panel.create_tween().set_parallel(true)
+	outro.tween_property(panel, "scale", Vector2(1.05, 1.05), 0.2)
+	outro.tween_property(panel, "modulate:a", 0.0, 0.2)
+	await outro.finished
+	panel.queue_free()
 
 
 func _tips_enabled() -> bool:

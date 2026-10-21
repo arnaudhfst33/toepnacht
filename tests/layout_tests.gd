@@ -12,6 +12,7 @@ func run_all() -> int:
 	_test_fill_rect_margins()
 	_test_bottom_safe_margin()
 	_test_visual_playing_card()
+	_test_location_portrait_style()
 	_test_retro_trick_table_seats()
 	_test_new_placeholder_screens()
 	print("")
@@ -58,6 +59,14 @@ func _test_visual_playing_card() -> void:
 	_expect(face.card.equals(card), "visual card keeps the played card")
 	_expect(face.recommended, "visual card supports the advice highlight")
 	face.free()
+
+
+func _test_location_portrait_style() -> void:
+	var portrait := PixelPortrait.new()
+	portrait.configure(1, true, true, LocationId.KROEG, "De Barman")
+	_expect(portrait.location_id == LocationId.KROEG, "portrait keeps its location outfit")
+	_expect(portrait.role_name == "De Barman" and portrait.boss, "portrait keeps role and boss styling")
+	portrait.free()
 
 
 func _test_retro_trick_table_seats() -> void:

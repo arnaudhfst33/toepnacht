@@ -25,8 +25,9 @@ func configure(game: ToepenGame, events: Array[Dictionary], names: PackedStringA
 	open_hand_labels.clear()
 
 	for player_id in range(1, ToepenGame.PLAYER_COUNT):
+		var display_name := _opponent_name(names, player_id)
 		var portrait := PixelPortrait.new()
-		portrait.configure(player_id, _active_player_id(game) == player_id, is_boss and player_id == 1)
+		portrait.configure(player_id, _active_player_id(game) == player_id, is_boss and player_id == 1, location_id, display_name)
 		add_child(portrait)
 		portraits[player_id] = portrait
 		var label := Label.new()
@@ -36,7 +37,7 @@ func configure(game: ToepenGame, events: Array[Dictionary], names: PackedStringA
 		var state := "AF" if player.is_eliminated else "%d/15 · %d krt" % [player.penalty_points, player.hand.size()]
 		if not player.is_active_in_round and not player.is_eliminated:
 			state = "%d/15 · PAS" % player.penalty_points
-		label.text = "%s\n%s" % [_opponent_name(names, player_id), state]
+		label.text = "%s\n%s" % [display_name, state]
 		add_child(label)
 		seat_labels[player_id] = label
 		if game.cards_open and not player.is_eliminated:
@@ -107,6 +108,7 @@ func _draw() -> void:
 	draw_colored_polygon(_ellipse(center + Vector2(0, 5), radii + Vector2(9, 8)), Color("15131bcc"))
 	draw_colored_polygon(_ellipse(center, radii), _felt_color())
 	draw_polyline(_closed_ellipse(center, radii - Vector2(7, 6)), Color("d6b85b88"), 2.0)
+	_draw_location_details(center, radii)
 	for player_id in ToepenGame.PLAYER_COUNT:
 		var card_center := _card_center(player_id)
 		draw_rect(Rect2(card_center - Vector2(29, 38), Vector2(58, 76)), Color("0d111633"), true)
@@ -123,6 +125,32 @@ func _felt_color() -> Color:
 			return Color("193b55")
 		_:
 			return Color("244636")
+
+
+func _draw_location_details(center: Vector2, radii: Vector2) -> void:
+	match location_id:
+		LocationId.KROEG:
+			# Houten kroegtafel met bierringen en onderzetters.
+			for y_offset in [-34.0, 0.0, 34.0]:
+				draw_line(Vector2(center.x - radii.x + 12, center.y + y_offset), Vector2(center.x + radii.x - 12, center.y + y_offset), Color("d59a5a22"), 2.0)
+			draw_arc(center + Vector2(-78, 24), 13, 0, TAU, 18, Color("e5c27a55"), 2.0)
+			draw_rect(Rect2(center + Vector2(70, -43), Vector2(24, 24)), Color("d5b56b44"), true)
+		LocationId.HUISFEEST:
+			# Neon tape en confetti op de feesttafel.
+			draw_line(center + Vector2(-radii.x * 0.7, -radii.y * 0.55), center + Vector2(radii.x * 0.7, radii.y * 0.55), Color("eb4c983d"), 4.0)
+			for offset in [Vector2(-82, -28), Vector2(76, 30), Vector2(-45, 42), Vector2(58, -39)]:
+				draw_rect(Rect2(center + offset, Vector2(5, 9)), Color("56d5dd88"), true)
+		LocationId.SOCIETEIT:
+			# Messing rand en eenvoudig verenigingswapen.
+			draw_polyline(_closed_ellipse(center, radii - Vector2(13, 11)), Color("d9b64c99"), 3.0)
+			draw_colored_polygon(PackedVector2Array([
+				center + Vector2(-12, -14), center + Vector2(12, -14), center + Vector2(9, 10), center, center + Vector2(-9, 10),
+			]), Color("7d294888"))
+		_:
+			# Bekraste studententafel met een pizzavlek en bierring.
+			draw_line(center + Vector2(-86, 31), center + Vector2(-53, 22), Color("e3d79a33"), 2.0)
+			draw_line(center + Vector2(60, -34), center + Vector2(84, -21), Color("e3d79a33"), 2.0)
+			draw_arc(center + Vector2(78, 26), 11, 0, TAU, 16, Color("cda56e44"), 2.0)
 
 
 func _ellipse(center: Vector2, radii: Vector2, points: int = 48) -> PackedVector2Array:

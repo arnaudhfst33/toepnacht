@@ -47,6 +47,7 @@ func start_new_pot() -> void:
 func start_campaign_pot() -> void:
 	tutorial = TutorialDirector.new()
 	visual_trick_cards.clear()
+	presentation_events.clear()
 	game = ToepenGame.new()
 	_configure_campaign_table()
 	game.cards_open = _campaign_cards_are_open()
@@ -56,7 +57,21 @@ func start_campaign_pot() -> void:
 		status_text += " Leerstand: kaarten van tegenstanders zijn open."
 	if flow.campaign.is_boss_potje():
 		status_text += " Boss: %s." % LocationId.boss_name(flow.campaign.location)
+	_queue_stage_intro()
 	resolve_ai()
+
+
+func _queue_stage_intro() -> void:
+	if flow == null:
+		return
+	presentation_events.append({
+		"type": "stage_intro",
+		"location": LocationId.display_name(flow.campaign.location),
+		"potje": flow.campaign.potje,
+		"boss": flow.campaign.is_boss_potje(),
+		"boss_name": LocationId.boss_name(flow.campaign.location),
+		"opponents": Array(opponent_names),
+	})
 
 
 func _campaign_cards_are_open() -> bool:

@@ -14,6 +14,7 @@ func run_all() -> int:
 	_test_loss_resets_only_current_location()
 	_test_replay_unlocked_location()
 	_test_ai_location_profiles()
+	_test_campaign_pot_queues_stage_intro()
 	_test_praeses_stronger_than_baseline()
 	_test_seeded_ai_decisions()
 	_test_tutorials_3_to_7()
@@ -188,6 +189,20 @@ func _test_ai_location_profiles() -> void:
 	_expect(AiProfile.kroeg_potje1().error_rate < AiProfile.studentenhuis_potje1().error_rate, "Kroeg p1 fewer mistakes than Studentenhuis p1")
 	_expect(AiProfile.huisfeest_potje1().was_bluff_rate > AiProfile.kroeg_potje1().was_bluff_rate, "Huisfeest p1 bluffs more")
 	_expect(AiProfile.regelaar().knock_scale > AiProfile.barman().knock_scale, "Regelaar knocks more aggressively")
+
+
+func _test_campaign_pot_queues_stage_intro() -> void:
+	var flow := _mem_flow()
+	flow.campaign.highest_unlocked_location = LocationId.KROEG
+	flow.start_new_run(LocationId.KROEG)
+	var session := TableSession.new()
+	session.bind_campaign(flow)
+	session.start_campaign_pot()
+	var events := session.take_presentation_events()
+	_expect_eq(events.size(), 1, "campaign pot queues one stage intro before play")
+	_expect_eq(str(events[0].get("type", "")), "stage_intro", "campaign intro uses stage-intro presentation")
+	_expect_eq(str(events[0].get("location", "")), "Kroeg", "stage intro names the selected location")
+	_expect_eq((events[0].get("opponents", []) as Array).size(), 3, "stage intro lists all three opponents")
 
 
 func _test_praeses_stronger_than_baseline() -> void:
