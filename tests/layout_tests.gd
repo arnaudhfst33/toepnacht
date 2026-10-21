@@ -12,6 +12,8 @@ func run_all() -> int:
 	_test_fill_rect_margins()
 	_test_bottom_safe_margin()
 	_test_visual_playing_card()
+	_test_picture_card_art()
+	_test_opponent_card_fan()
 	_test_location_portrait_style()
 	_test_retro_trick_table_seats()
 	_test_new_placeholder_screens()
@@ -61,11 +63,31 @@ func _test_visual_playing_card() -> void:
 	face.free()
 
 
+func _test_picture_card_art() -> void:
+	var face := PlayingCardFace.new()
+	for rank in [Card.Rank.JACK, Card.Rank.QUEEN, Card.Rank.KING, Card.Rank.ACE]:
+		face.configure(Card.new(Card.Suit.CLUBS, rank))
+		_expect(face.uses_picture_art(), "%s uses illustrated card art" % Card.new(Card.Suit.CLUBS, rank).rank_name())
+	face.configure(Card.new(Card.Suit.CLUBS, Card.Rank.TEN))
+	_expect(not face.uses_picture_art(), "number card keeps pip layout")
+	face.free()
+
+
+func _test_opponent_card_fan() -> void:
+	var fan := CardBackFan.new()
+	fan.configure(4)
+	_expect(fan.card_count == 4, "opponent with four cards shows four card backs")
+	fan.configure(2)
+	_expect(fan.card_count == 2, "opponent card backs follow the remaining hand")
+	fan.free()
+
+
 func _test_location_portrait_style() -> void:
 	var portrait := PixelPortrait.new()
 	portrait.configure(1, true, true, LocationId.KROEG, "De Barman")
 	_expect(portrait.location_id == LocationId.KROEG, "portrait keeps its location outfit")
 	_expect(portrait.role_name == "De Barman" and portrait.boss, "portrait keeps role and boss styling")
+	_expect(portrait.custom_minimum_size.x >= 72, "opponent portrait is large enough to read on mobile")
 	portrait.free()
 
 

@@ -30,6 +30,9 @@ var power_row: HBoxContainer
 var huis_row: HFlowContainer
 var campaign_button: Button
 var title_label: Label
+var tips_button: Button
+var menu_button: Button
+var leave_dialog: ConfirmationDialog
 var bg_rect: RetroTableBackdrop
 var skip_wasdag_button: Button
 var hand_strength_label: Label
@@ -96,9 +99,21 @@ func _build_layout() -> void:
 	middle.clip_contents = true
 	root.add_child(middle)
 
+	var table_toolbar := UiLayout.hbox(6)
+	middle.add_child(table_toolbar)
+	menu_button = Button.new()
+	menu_button.text = "MENU"
+	menu_button.custom_minimum_size = Vector2(76, 34)
+	menu_button.pressed.connect(_on_menu_requested)
+	table_toolbar.add_child(menu_button)
 	title_label = UiLayout.wrap_label()
 	title_label.text = "Toepnacht"
-	middle.add_child(title_label)
+	title_label.size_flags_stretch_ratio = 1.5
+	table_toolbar.add_child(title_label)
+	tips_button = Button.new()
+	tips_button.custom_minimum_size = Vector2(86, 34)
+	tips_button.pressed.connect(_on_toggle_tips)
+	table_toolbar.add_child(tips_button)
 
 	var hud := UiLayout.hbox(8)
 	scores_label = UiLayout.wrap_label(HORIZONTAL_ALIGNMENT_LEFT)
@@ -252,6 +267,7 @@ func _build_layout() -> void:
 	_bind_hold_tip(skip_specials_button, "VERDER: je gebruikt geen special en speelt door met deze vier kaarten.")
 	_bind_hold_tip(challenge_button, "BETWIST: draai de geclaimde was om. Bij echte was krijg jij +1; bij bluf krijgt de ander +1.")
 	_bind_hold_tip(decline_button, "LAAT: je controleert de was niet en krijgt geen strafpunt.")
+	_build_leave_dialog()
 
 
 func _on_knock() -> void:
@@ -304,6 +320,41 @@ func _sfx(cue: String) -> void:
 	RetroSfx.play(self, cue, float(settings.get("sfx_volume", 1.0)))
 
 
+func _on_toggle_tips() -> void:
+	Boot.ensure_flow()
+	var enabled := bool(Boot.flow.campaign.settings.get("tips_on", true))
+	Boot.flow.campaign.settings["tips_on"] = not enabled
+	Boot.flow.persist()
+	_hide_card_tip()
+	_refresh()
+
+
+func _on_menu_requested() -> void:
+	if session != null and session.tutorial.kind != TutorialDirector.Kind.NONE:
+		_return_to_menu()
+		return
+	leave_dialog.popup_centered_ratio(0.88)
+
+
+func _build_leave_dialog() -> void:
+	leave_dialog = ConfirmationDialog.new()
+	leave_dialog.title = "Terug naar het menu?"
+	leave_dialog.dialog_text = (
+		"Je level, dopjes en power-ups blijven bewaard.\n"
+		+ "Het huidige potje begint opnieuw wanneer je doorgaat."
+	)
+	leave_dialog.ok_button_text = "NAAR MENU"
+	leave_dialog.cancel_button_text = "BLIJVEN SPELEN"
+	leave_dialog.confirmed.connect(_return_to_menu)
+	add_child(leave_dialog)
+
+
+func _return_to_menu() -> void:
+	if session != null and session.flow != null:
+		session.flow.persist()
+	get_tree().change_scene_to_file("res://scenes/menu.tscn")
+
+
 func _refresh() -> void:
 	var game := session.game
 	if session.flow != null:
@@ -331,6 +382,7 @@ func _refresh() -> void:
 		stake_label.text += " · LEERSTAND: OPEN KAARTEN"
 	trick_label.text = _trick_title(game)
 	status_label.text = session.status_text
+	tips_button.text = "TIPS AAN" if _tips_enabled() else "TIPS UIT"
 	if not _tips_enabled():
 		_hide_card_tip()
 	hand_strength_label.text = CardAdvisor.hand_summary(game.players[0].hand)
@@ -797,9 +849,8 @@ func _animate_stage_intro(event: Dictionary) -> void:
 
 
 func _tips_enabled() -> bool:
-	if session == null or session.flow == null:
-		return true
-	return bool(session.flow.campaign.settings.get("tips_on", true))
+	Boot.ensure_flow()
+	return bool(Boot.flow.campaign.settings.get("tips_on", true))
 
 
 func _rebuild_power_slots() -> void:

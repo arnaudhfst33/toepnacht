@@ -57,13 +57,21 @@ func _draw_studentenhuis() -> void:
 
 
 func _draw_kroeg() -> void:
-	# Tap met drie kranen en een warm verlicht krijtbord.
-	draw_rect(Rect2(size.x * 0.08, 22, 82, 52), Color("201916"), false, 4)
-	draw_rect(Rect2(size.x * 0.11, 28, 58, 4), Color("d8bd72"))
+	# Herkenbaar krijtbord met drie gekoppelde tapkranen en kleine glazen.
+	var board := Rect2(size.x * 0.08, 22, 82, 52)
+	draw_rect(board, Color("201916"))
+	draw_rect(board, Color("8a6445"), false, 4)
+	var font := get_theme_default_font()
+	draw_string(font, board.position + Vector2(0, 33), "TOEP", HORIZONTAL_ALIGNMENT_CENTER, board.size.x, 18, Color("ead38b"))
+	var tap_bar_x := size.x * 0.66
+	draw_rect(Rect2(tap_bar_x, 24, 62, 5), Color("8c6635"))
 	for x in range(0, 3):
-		var tap_x := size.x * 0.68 + x * 22
-		draw_rect(Rect2(tap_x, 28, 6, 38), Color("c79b48"))
+		var tap_x := tap_bar_x + 7 + x * 22
+		draw_rect(Rect2(tap_x, 28, 6, 30), Color("c79b48"))
 		draw_rect(Rect2(tap_x - 4, 26, 14, 6), Color("e2c875"))
+		draw_rect(Rect2(tap_x + 4, 50, 8, 4), Color("c79b48"))
+		draw_rect(Rect2(tap_x + 6, 57, 12, 15), Color("e8d9ae99"), false, 2)
+		draw_rect(Rect2(tap_x + 8, 64, 8, 6), Color("e3b94f99"))
 
 
 func _draw_huisfeest() -> void:

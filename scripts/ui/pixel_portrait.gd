@@ -14,7 +14,7 @@ func configure(p_seed: int, p_active: bool, p_boss: bool = false, p_location: in
 	boss = p_boss
 	location_id = p_location
 	role_name = p_role
-	custom_minimum_size = Vector2(56, 54)
+	custom_minimum_size = Vector2(72, 68)
 	queue_redraw()
 
 
@@ -25,7 +25,10 @@ func _draw() -> void:
 	var shirt: Color = shirt_colors[seat_seed % shirt_colors.size()]
 	var hair := Color("332521") if seat_seed % 2 == 0 else Color("c49a3a")
 	var outline := Color("151318")
-	var x := (size.x - 40.0) * 0.5
+	var pixel_scale := minf((size.x - 4.0) / 40.0, (size.y - 8.0) / 56.0)
+	var origin := Vector2((size.x - 40.0 * pixel_scale) * 0.5, 5.0 * pixel_scale)
+	draw_set_transform(origin, 0.0, Vector2(pixel_scale, pixel_scale))
+	var x := 0.0
 	draw_rect(Rect2(x + 8, 4, 24, 4), hair)
 	draw_rect(Rect2(x + 4, 8, 32, 16), hair)
 	draw_rect(Rect2(x + 8, 12, 24, 24), skin)
@@ -35,10 +38,12 @@ func _draw() -> void:
 	draw_rect(Rect2(x + 4, 38, 32, 14), shirt)
 	draw_rect(Rect2(x, 44, 40, 8), shirt)
 	_draw_location_outfit(x, outline)
+	_draw_role_detail(x, outline)
 	if boss:
 		draw_rect(Rect2(x + 6, 0, 28, 4), Color("f5cf55"))
 		draw_rect(Rect2(x + 10, -4, 4, 8), Color("f5cf55"))
 		draw_rect(Rect2(x + 26, -4, 4, 8), Color("f5cf55"))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if active:
 		draw_rect(Rect2(1, 1, size.x - 2, size.y - 2), Color("f6db75"), false, 3.0)
 
@@ -80,4 +85,20 @@ func _draw_location_outfit(x: float, outline: Color) -> void:
 			]), Color("b5394f"))
 			if boss:
 				draw_line(Vector2(x + 8, 39), Vector2(x + 32, 48), Color("e1bd55"), 2.0)
+
+
+func _draw_role_detail(x: float, outline: Color) -> void:
+	var role := role_name.to_lower()
+	if role.contains("feut") or role.contains("sjaars") or role.contains("knor"):
+		# Scheve studentencap.
+		draw_rect(Rect2(x + 5, 5, 28, 4), Color("7b3157"))
+		draw_rect(Rect2(x + 27, 8, 10, 3), Color("7b3157"))
+	if role.contains("henk") or role.contains("huisoudste") or role.contains("kroegbaas"):
+		# Een stevige snor geeft deze vaste kracht meer karakter.
+		draw_rect(Rect2(x + 13, 27, 6, 3), outline)
+		draw_rect(Rect2(x + 21, 27, 6, 3), outline)
+	if role.contains("dealer"):
+		# Fluorescerend kettinkje als rustig, fictief karakterdetail.
+		draw_line(Vector2(x + 13, 39), Vector2(x + 20, 46), Color("70e0c1"), 2.0)
+		draw_line(Vector2(x + 27, 39), Vector2(x + 20, 46), Color("70e0c1"), 2.0)
 

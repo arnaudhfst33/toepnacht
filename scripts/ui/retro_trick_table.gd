@@ -5,6 +5,7 @@ extends Control
 
 var location_id: int = LocationId.STUDENTENHUIS
 var portraits: Dictionary = {}
+var hand_fans: Dictionary = {}
 var played_faces: Dictionary = {}
 var seat_labels: Dictionary = {}
 var open_hand_labels: Dictionary = {}
@@ -20,6 +21,7 @@ func configure(game: ToepenGame, events: Array[Dictionary], names: PackedStringA
 	for child in get_children():
 		child.queue_free()
 	portraits.clear()
+	hand_fans.clear()
 	played_faces.clear()
 	seat_labels.clear()
 	open_hand_labels.clear()
@@ -30,6 +32,10 @@ func configure(game: ToepenGame, events: Array[Dictionary], names: PackedStringA
 		portrait.configure(player_id, _active_player_id(game) == player_id, is_boss and player_id == 1, location_id, display_name)
 		add_child(portrait)
 		portraits[player_id] = portrait
+		var hand_fan := CardBackFan.new()
+		hand_fan.configure(game.players[player_id].hand.size())
+		add_child(hand_fan)
+		hand_fans[player_id] = hand_fan
 		var label := Label.new()
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		label.add_theme_font_size_override("font_size", 10)
@@ -83,8 +89,11 @@ func _layout_seats() -> void:
 		return
 	for player_id in portraits:
 		var portrait: Control = portraits[player_id]
-		portrait.size = Vector2(56, 54)
+		portrait.size = Vector2(72, 68)
 		portrait.position = _portrait_center(player_id) - portrait.size * 0.5
+		var hand_fan: Control = hand_fans[player_id]
+		hand_fan.size = Vector2(42, 24)
+		hand_fan.position = _hand_fan_center(player_id) - hand_fan.size * 0.5
 		var label: Label = seat_labels[player_id]
 		label.size = Vector2(112, 40)
 		label.position = _label_position(player_id, label.size)
@@ -170,11 +179,11 @@ func _closed_ellipse(center: Vector2, radii: Vector2) -> PackedVector2Array:
 func _portrait_center(player_id: int) -> Vector2:
 	match player_id:
 		1:
-			return Vector2(size.x * 0.08, size.y * 0.48)
+			return Vector2(size.x * 0.11, size.y * 0.48)
 		2:
 			return Vector2(size.x * 0.5, size.y * 0.13)
 		3:
-			return Vector2(size.x * 0.92, size.y * 0.48)
+			return Vector2(size.x * 0.89, size.y * 0.48)
 		_:
 			return Vector2(size.x * 0.5, size.y * 0.95)
 
@@ -191,6 +200,18 @@ func _card_center(player_id: int) -> Vector2:
 			return Vector2(size.x * 0.71, size.y * 0.52)
 		_:
 			return Vector2(size.x * 0.5, size.y * 0.52)
+
+
+func _hand_fan_center(player_id: int) -> Vector2:
+	match player_id:
+		1:
+			return Vector2(size.x * 0.17, size.y * 0.48)
+		2:
+			return Vector2(size.x * 0.5, size.y * 0.23)
+		3:
+			return Vector2(size.x * 0.83, size.y * 0.48)
+		_:
+			return Vector2(size.x * 0.5, size.y * 0.88)
 
 
 func _label_position(player_id: int, label_size: Vector2) -> Vector2:
