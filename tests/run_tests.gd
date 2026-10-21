@@ -14,4 +14,6 @@ func _initialize() -> void:
 	failures += advisor.run_all()
 	var task05 := Task05Tests.new()
 	failures += task05.run_all()
+	var end_to_end := EndToEndTests.new()
+	failures += end_to_end.run_all()
 	quit(1 if failures > 0 else 0)
