@@ -9,6 +9,7 @@ func run_all() -> int:
 	_failures = 0
 	_passed = 0
 	_test_new_run_starts_potje_1()
+	_test_restart_run_preserves_progress()
 	_test_win_potje_1_opens_shop()
 	_test_leave_shop_goes_to_potje_2()
 	_test_win_potje_2_opens_shop()
@@ -95,6 +96,27 @@ func _test_new_run_starts_potje_1() -> void:
 	_expect_eq(flow.campaign.potje, 1, "starts at potje 1")
 	_expect_eq(flow.campaign.beer_caps, 0, "new run has 0 beer caps")
 	_expect_eq(flow.campaign.inventory.size(), 0, "new run has empty inventory")
+
+
+func _test_restart_run_preserves_progress() -> void:
+	var flow := _mem_flow()
+	flow.campaign.highest_unlocked_location = LocationId.HUISFEEST
+	flow.campaign.mark_location_completed(LocationId.STUDENTENHUIS)
+	flow.campaign.tutorial_blanco_done = true
+	flow.campaign.settings["tips_on"] = false
+	flow.campaign.start_new_run(LocationId.KROEG)
+	flow.campaign.potje = 2
+	flow.campaign.beer_caps = 9
+	flow.campaign.add_power_up(PowerUpId.EVEN_SPIEKEN)
+	flow.start_new_studentenhuis_run()
+	_expect_eq(flow.campaign.location, LocationId.STUDENTENHUIS, "restart returns to Studentenhuis")
+	_expect_eq(flow.campaign.potje, 1, "restart returns to potje 1")
+	_expect_eq(flow.campaign.beer_caps, 0, "restart clears beer caps")
+	_expect_eq(flow.campaign.inventory.size(), 0, "restart clears power-ups")
+	_expect_eq(flow.campaign.highest_unlocked_location, LocationId.HUISFEEST, "restart preserves unlocked levels")
+	_expect(flow.campaign.is_location_completed(LocationId.STUDENTENHUIS), "restart preserves completed levels")
+	_expect(flow.campaign.tutorial_blanco_done, "restart preserves tutorials")
+	_expect_eq(flow.campaign.settings["tips_on"], false, "restart preserves settings")
 
 
 func _test_win_potje_1_opens_shop() -> void:

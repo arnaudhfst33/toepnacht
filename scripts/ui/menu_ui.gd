@@ -1,8 +1,10 @@
 extends Control
 
 var title: Label
-var play_button: Button
 var continue_button: Button
+var restart_button: Button
+var level_select_button: Button
+var restart_dialog: ConfirmationDialog
 
 
 func _ready() -> void:
@@ -21,16 +23,19 @@ func _ready() -> void:
 	Boot.ensure_flow()
 	sub.text = _status_line()
 	box.add_child(sub)
-	play_button = _add_button(box, "SPELEN")
-	play_button.pressed.connect(_on_play)
 	continue_button = _add_button(box, "DOORGAAN")
 	continue_button.pressed.connect(_on_continue)
+	restart_button = _add_button(box, "OPNIEUW BEGINNEN")
+	restart_button.pressed.connect(_on_restart_requested)
+	level_select_button = _add_button(box, "LEVEL SELECT")
+	level_select_button.pressed.connect(_on_level_select)
 	_add_button(box, "HOE WERKT TOEPEN?").pressed.connect(func() -> void:
 		get_tree().change_scene_to_file("res://scenes/tutorials.tscn")
 	)
 	_add_button(box, "INSTELLINGEN").pressed.connect(func() -> void:
 		get_tree().change_scene_to_file("res://scenes/settings.tscn")
 	)
+	_build_restart_dialog()
 	_refresh_buttons()
 
 
@@ -48,8 +53,9 @@ func _status_line() -> String:
 
 func _refresh_buttons() -> void:
 	var active := Boot.flow.campaign.run_active
-	play_button.visible = not active
-	continue_button.visible = active
+	continue_button.disabled = not active
+	continue_button.text = "DOORGAAN" if active else "DOORGAAN · GEEN ACTIEVE RUN"
+	level_select_button.disabled = false
 
 
 func _add_button(parent: Node, text: String) -> Button:
@@ -61,8 +67,35 @@ func _add_button(parent: Node, text: String) -> Button:
 	return button
 
 
-func _on_play() -> void:
+func _on_level_select() -> void:
 	get_tree().change_scene_to_file("res://scenes/campaign.tscn")
+
+
+func _on_restart_requested() -> void:
+	if not Boot.flow.campaign.run_active:
+		_on_restart_confirmed()
+		return
+	restart_dialog.popup_centered_ratio(0.88)
+
+
+func _build_restart_dialog() -> void:
+	restart_dialog = ConfirmationDialog.new()
+	restart_dialog.title = "Opnieuw beginnen?"
+	restart_dialog.dialog_text = (
+		"Je actieve run, dopjes en power-ups vervallen.\n"
+		+ "Vrijgespeelde levels, instellingen en tutorials blijven bewaard."
+	)
+	restart_dialog.ok_button_text = "OPNIEUW BEGINNEN"
+	restart_dialog.cancel_button_text = "ANNULEREN"
+	restart_dialog.confirmed.connect(_on_restart_confirmed)
+	add_child(restart_dialog)
+
+
+func _on_restart_confirmed() -> void:
+	Boot.ensure_flow()
+	Boot.flow.start_new_studentenhuis_run()
+	Boot.mode = "play"
+	get_tree().change_scene_to_file("res://scenes/table.tscn")
 
 
 func _on_continue() -> void:
