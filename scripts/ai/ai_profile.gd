@@ -286,16 +286,16 @@ static func _seat_names(p: AiProfile, location: int, potje: int, seat: int) -> A
 static func _names(location: int, potje: int) -> PackedStringArray:
 	if location == LocationId.KROEG:
 		if potje == 1:
-			return PackedStringArray(["Stamgast", "Proost", "Tapper"])
+			return PackedStringArray(["Stamgast", "Henk", "Tapper"])
 		if potje == 2:
-			return PackedStringArray(["Barkeeper", "Stamgast", "Student"])
-		return PackedStringArray(["Stamgast", "Stamgast", "Student"])
+			return PackedStringArray(["Barkeeper", "Kroegbaas", "Student"])
+		return PackedStringArray(["Stamgast", "Stamgast", "Knor"])
 	if location == LocationId.HUISFEEST:
 		if potje == 1:
-			return PackedStringArray(["Feestganger", "DJ", "Kotgenoot"])
+			return PackedStringArray(["Feestganger", "DJ", "Dealer"])
 		if potje == 2:
-			return PackedStringArray(["Regelaar-hulp", "Feestganger", "Buur"])
-		return PackedStringArray(["Feestganger", "DJ", "Buur"])
+			return PackedStringArray(["Regelaar", "Feestganger", "Buurman"])
+		return PackedStringArray(["Feestganger", "DJ", "Buurman"])
 	if location == LocationId.SOCIETEIT:
 		if potje == 1:
 			return PackedStringArray(["Sociëteitslid", "Abactis", "Fiscus"])
@@ -305,5 +305,5 @@ static func _names(location: int, potje: int) -> PackedStringArray:
 	if potje <= 1:
 		return PackedStringArray(["Feut", "Sjaars", "Huisoudste"])
 	if potje == 2:
-		return PackedStringArray(["Bestuurslid", "Feestcie", "Kotbaas"])
-	return PackedStringArray(["Huisgenoot", "Huisgenoot", "Barploeg"])
+		return PackedStringArray(["Knorreboef", "Jaargenoot", "Clubgenoot"])
+	return PackedStringArray(["Huisgenoot", "Huisgenoot", "Dispuutgenoot"])

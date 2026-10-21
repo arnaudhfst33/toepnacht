@@ -14,6 +14,7 @@ func run_all() -> int:
 	_test_loss_resets_only_current_location()
 	_test_replay_unlocked_location()
 	_test_ai_location_profiles()
+	_test_opponent_names_per_table()
 	_test_campaign_pot_queues_stage_intro()
 	_test_praeses_stronger_than_baseline()
 	_test_seeded_ai_decisions()
@@ -189,6 +190,25 @@ func _test_ai_location_profiles() -> void:
 	_expect(AiProfile.kroeg_potje1().error_rate < AiProfile.studentenhuis_potje1().error_rate, "Kroeg p1 fewer mistakes than Studentenhuis p1")
 	_expect(AiProfile.huisfeest_potje1().was_bluff_rate > AiProfile.kroeg_potje1().was_bluff_rate, "Huisfeest p1 bluffs more")
 	_expect(AiProfile.regelaar().knock_scale > AiProfile.barman().knock_scale, "Regelaar knocks more aggressively")
+
+
+func _test_opponent_names_per_table() -> void:
+	_expect_eq(_opponent_names(LocationId.STUDENTENHUIS, 1), PackedStringArray(["Feut", "Sjaars", "Huisoudste"]), "Studentenhuis potje 1 names")
+	_expect_eq(_opponent_names(LocationId.STUDENTENHUIS, 2), PackedStringArray(["Knorreboef", "Jaargenoot", "Clubgenoot"]), "Studentenhuis potje 2 names")
+	_expect_eq(_opponent_names(LocationId.STUDENTENHUIS, 3), PackedStringArray(["De Huisoudste", "Huisgenoot", "Dispuutgenoot"]), "Studentenhuis boss table names")
+	_expect_eq(_opponent_names(LocationId.KROEG, 1), PackedStringArray(["Stamgast", "Henk", "Tapper"]), "Kroeg potje 1 names")
+	_expect_eq(_opponent_names(LocationId.KROEG, 2), PackedStringArray(["Barkeeper", "Kroegbaas", "Student"]), "Kroeg potje 2 names")
+	_expect_eq(_opponent_names(LocationId.KROEG, 3), PackedStringArray(["De Barman", "Stamgast", "Knor"]), "Kroeg boss table names")
+	_expect_eq(_opponent_names(LocationId.HUISFEEST, 1), PackedStringArray(["Feestganger", "DJ", "Dealer"]), "Huisfeest potje 1 names")
+	_expect_eq(_opponent_names(LocationId.HUISFEEST, 2), PackedStringArray(["Regelaar", "Feestganger", "Buurman"]), "Huisfeest potje 2 names")
+	_expect_eq(_opponent_names(LocationId.HUISFEEST, 3), PackedStringArray(["De Regelaar", "DJ", "Buurman"]), "Huisfeest boss table names")
+
+
+func _opponent_names(location: int, potje: int) -> PackedStringArray:
+	var names := PackedStringArray()
+	for seat in range(1, 4):
+		names.append(AiProfile.for_location(location, potje, seat).display_name)
+	return names
 
 
 func _test_campaign_pot_queues_stage_intro() -> void:
