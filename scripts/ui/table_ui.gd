@@ -30,8 +30,14 @@ var power_row: HBoxContainer
 var huis_row: HFlowContainer
 var campaign_button: Button
 var title_label: Label
-var tips_button: Button
-var menu_button: Button
+var hamburger_button: Button
+var game_menu_panel: PanelContainer
+var menu_tips_button: Button
+var menu_sfx_button: Button
+var menu_music_button: Button
+var menu_haptics_button: Button
+var menu_open_cards_button: Button
+var menu_animation_button: Button
 var leave_dialog: ConfirmationDialog
 var bg_rect: RetroTableBackdrop
 var skip_wasdag_button: Button
@@ -99,21 +105,9 @@ func _build_layout() -> void:
 	middle.clip_contents = true
 	root.add_child(middle)
 
-	var table_toolbar := UiLayout.hbox(6)
-	middle.add_child(table_toolbar)
-	menu_button = Button.new()
-	menu_button.text = "MENU"
-	menu_button.custom_minimum_size = Vector2(76, 34)
-	menu_button.pressed.connect(_on_menu_requested)
-	table_toolbar.add_child(menu_button)
 	title_label = UiLayout.wrap_label()
 	title_label.text = "Toepnacht"
-	title_label.size_flags_stretch_ratio = 1.5
-	table_toolbar.add_child(title_label)
-	tips_button = Button.new()
-	tips_button.custom_minimum_size = Vector2(86, 34)
-	tips_button.pressed.connect(_on_toggle_tips)
-	table_toolbar.add_child(tips_button)
+	middle.add_child(title_label)
 
 	var hud := UiLayout.hbox(8)
 	scores_label = UiLayout.wrap_label(HORIZONTAL_ALIGNMENT_LEFT)
@@ -222,6 +216,7 @@ func _build_layout() -> void:
 
 	hand_strength_label = UiLayout.wrap_label()
 	hand_strength_label.add_theme_font_size_override("font_size", 12)
+	hand_strength_label.custom_minimum_size.y = 18
 	bottom.add_child(hand_strength_label)
 
 	hand_row = UiLayout.hbox(6)
@@ -267,6 +262,7 @@ func _build_layout() -> void:
 	_bind_hold_tip(skip_specials_button, "VERDER: je gebruikt geen special en speelt door met deze vier kaarten.")
 	_bind_hold_tip(challenge_button, "BETWIST: draai de geclaimde was om. Bij echte was krijg jij +1; bij bluf krijgt de ander +1.")
 	_bind_hold_tip(decline_button, "LAAT: je controleert de was niet en krijgt geen strafpunt.")
+	_build_game_menu()
 	_build_leave_dialog()
 
 
@@ -321,15 +317,100 @@ func _sfx(cue: String) -> void:
 
 
 func _on_toggle_tips() -> void:
-	Boot.ensure_flow()
-	var enabled := bool(Boot.flow.campaign.settings.get("tips_on", true))
-	Boot.flow.campaign.settings["tips_on"] = not enabled
-	Boot.flow.persist()
+	_toggle_setting("tips_on")
 	_hide_card_tip()
 	_refresh()
 
 
+func _toggle_setting(key: String) -> void:
+	Boot.ensure_flow()
+	var settings := Boot.flow.campaign.settings
+	settings[key] = not bool(settings.get(key, true))
+	Boot.flow.persist()
+	_update_game_menu_labels()
+
+
+func _toggle_animation_speed() -> void:
+	Boot.ensure_flow()
+	var settings := Boot.flow.campaign.settings
+	settings["animation_speed"] = "fast" if str(settings.get("animation_speed", "normal")) == "normal" else "normal"
+	Boot.flow.persist()
+	_update_game_menu_labels()
+
+
+func _build_game_menu() -> void:
+	hamburger_button = Button.new()
+	hamburger_button.text = "☰"
+	hamburger_button.tooltip_text = "Spelmenu"
+	hamburger_button.position = Vector2(10, 10)
+	hamburger_button.size = Vector2(46, 42)
+	hamburger_button.z_index = 110
+	hamburger_button.pressed.connect(_toggle_game_menu)
+	add_child(hamburger_button)
+
+	game_menu_panel = PanelContainer.new()
+	game_menu_panel.position = Vector2(10, 58)
+	game_menu_panel.size = Vector2(270, 350)
+	game_menu_panel.z_index = 109
+	game_menu_panel.add_theme_stylebox_override("panel", UiLayout.pixel_panel(Color("17151cf5"), Color("e7bd4c")))
+	add_child(game_menu_panel)
+	var menu_box := UiLayout.vbox(7)
+	game_menu_panel.add_child(menu_box)
+	var menu_title := UiLayout.wrap_label()
+	menu_title.text = "SPELMENU"
+	menu_title.add_theme_font_size_override("font_size", 19)
+	menu_box.add_child(menu_title)
+	menu_tips_button = _game_menu_button(menu_box, _on_toggle_tips)
+	menu_sfx_button = _game_menu_button(menu_box, func() -> void: _toggle_setting("sfx_on"))
+	menu_music_button = _game_menu_button(menu_box, func() -> void: _toggle_setting("music_on"))
+	menu_haptics_button = _game_menu_button(menu_box, func() -> void: _toggle_setting("haptics_on"))
+	menu_open_cards_button = _game_menu_button(menu_box, func() -> void: _toggle_setting("open_first_pot"))
+	menu_animation_button = _game_menu_button(menu_box, _toggle_animation_speed)
+	var resume_button := _game_menu_button(menu_box, _toggle_game_menu)
+	resume_button.text = "DOORSPELEN"
+	var main_menu_button := _game_menu_button(menu_box, _on_menu_requested)
+	main_menu_button.text = "HOOFDMENU"
+	game_menu_panel.visible = false
+	_update_game_menu_labels()
+
+
+func _game_menu_button(parent: Node, callback: Callable) -> Button:
+	var button := Button.new()
+	button.custom_minimum_size = Vector2(0, 38)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.pressed.connect(callback)
+	parent.add_child(button)
+	return button
+
+
+func _toggle_game_menu() -> void:
+	game_menu_panel.visible = not game_menu_panel.visible
+	hamburger_button.text = "×" if game_menu_panel.visible else "☰"
+	if game_menu_panel.visible:
+		_hide_card_tip()
+
+
+func _update_game_menu_labels() -> void:
+	if menu_tips_button == null:
+		return
+	Boot.ensure_flow()
+	var settings := Boot.flow.campaign.settings
+	menu_tips_button.text = _toggle_label("Tips", settings, "tips_on")
+	menu_sfx_button.text = _toggle_label("Geluidseffecten", settings, "sfx_on")
+	menu_music_button.text = _toggle_label("Muziek", settings, "music_on")
+	menu_haptics_button.text = _toggle_label("Trillingen", settings, "haptics_on")
+	menu_open_cards_button.text = _toggle_label("Open kaarten eerste pot", settings, "open_first_pot")
+	var speed := str(settings.get("animation_speed", "normal"))
+	menu_animation_button.text = "Animaties: %s" % ("snel" if speed == "fast" else "rustig")
+
+
+func _toggle_label(label: String, settings: Dictionary, key: String) -> String:
+	return "%s: %s" % [label, "aan" if bool(settings.get(key, true)) else "uit"]
+
+
 func _on_menu_requested() -> void:
+	game_menu_panel.visible = false
+	hamburger_button.text = "☰"
 	if session != null and session.tutorial.kind != TutorialDirector.Kind.NONE:
 		_return_to_menu()
 		return
@@ -382,13 +463,16 @@ func _refresh() -> void:
 		stake_label.text += " · LEERSTAND: OPEN KAARTEN"
 	trick_label.text = _trick_title(game)
 	status_label.text = session.status_text
-	tips_button.text = "TIPS AAN" if _tips_enabled() else "TIPS UIT"
 	if not _tips_enabled():
 		_hide_card_tip()
-	hand_strength_label.text = CardAdvisor.hand_summary(game.players[0].hand)
-	if CardAdvisor.recommended_card(game) != null and _tips_enabled():
-		hand_strength_label.text += " · gouden rand = advies"
-	hand_strength_label.visible = _tips_enabled()
+	if _tips_enabled():
+		hand_strength_label.text = CardAdvisor.hand_summary(game.players[0].hand)
+		if CardAdvisor.recommended_card(game) != null:
+			hand_strength_label.text += " · gouden rand = advies"
+	else:
+		hand_strength_label.text = ""
+	hand_strength_label.visible = true
+	_update_game_menu_labels()
 	armoede_label.text = _armoede_line(game)
 	_rebuild_power_slots()
 	_rebuild_huis_row()
