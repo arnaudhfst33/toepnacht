@@ -23,6 +23,11 @@ func _ready() -> void:
 	Boot.ensure_flow()
 	sub.text = _status_line()
 	box.add_child(sub)
+	if Boot.test_all_levels:
+		var test_badge := UiLayout.wrap_label()
+		test_badge.text = "TESTVERSIE · ALLE LEVELS OPEN\nVoortgang wordt in deze test niet bewaard."
+		test_badge.modulate = Color(1.0, 0.82, 0.25)
+		box.add_child(test_badge)
 	continue_button = _add_button(box, "DOORGAAN")
 	continue_button.pressed.connect(_on_continue)
 	restart_button = _add_button(box, "OPNIEUW BEGINNEN")

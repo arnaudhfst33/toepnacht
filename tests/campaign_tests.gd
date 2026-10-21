@@ -39,6 +39,7 @@ func run_all() -> int:
 	_test_save_version()
 	_test_ai_profiles_legal_and_hidden()
 	_test_boss_profile_imperfect()
+	_test_all_levels_test_mode_is_isolated()
 	print("")
 	print("Campaign tests: %d passed, %d failed" % [_passed, _failures])
 	return _failures
@@ -96,6 +97,18 @@ func _test_new_run_starts_potje_1() -> void:
 	_expect_eq(flow.campaign.potje, 1, "starts at potje 1")
 	_expect_eq(flow.campaign.beer_caps, 0, "new run has 0 beer caps")
 	_expect_eq(flow.campaign.inventory.size(), 0, "new run has empty inventory")
+
+
+func _test_all_levels_test_mode_is_isolated() -> void:
+	Boot.reset()
+	Boot.activate_all_levels_test()
+	var test_flow := Boot.ensure_flow()
+	_expect(Boot.test_all_levels, "all-levels test mode is clearly active")
+	_expect_eq(test_flow.campaign.highest_unlocked_location, LocationId.SOCIETEIT, "test mode unlocks all four locations")
+	_expect(test_flow.save.memory_only, "test mode uses an isolated in-memory save")
+	test_flow.start_new_run(LocationId.SOCIETEIT)
+	_expect_eq(test_flow.campaign.location, LocationId.SOCIETEIT, "test mode can start the final location")
+	Boot.reset()
 
 
 func _test_restart_run_preserves_progress() -> void:

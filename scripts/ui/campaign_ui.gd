@@ -13,6 +13,8 @@ func _ready() -> void:
 	add_child(box)
 	var title := UiLayout.wrap_label()
 	title.text = "Campagne"
+	if Boot.test_all_levels:
+		title.text += "\nTESTVERSIE · ALLE LEVELS OPEN"
 	if Boot.flow.campaign.campaign_complete:
 		title.text += "\nTOEPNACHT UITGESPEELD"
 	box.add_child(title)
@@ -26,7 +28,7 @@ func _ready() -> void:
 	for loc in range(LocationId.COUNT):
 		var button := _make_button(_location_label(loc))
 		var captured := loc
-		button.disabled = loc > Boot.flow.campaign.highest_unlocked_location
+		button.disabled = (not Boot.test_all_levels) and loc > Boot.flow.campaign.highest_unlocked_location
 		button.pressed.connect(func() -> void:
 			_pick_location(captured)
 		)
